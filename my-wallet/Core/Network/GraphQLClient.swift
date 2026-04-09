@@ -64,7 +64,8 @@ struct GraphQLClient {
 
     /// Performs a GraphQL operation with no variables.
     func perform<T: Decodable>(query: String, token: String) async throws -> T {
-        struct NoVariables: Encodable {}
-        return try await perform(query: query, variables: NoVariables(), token: token)
+        return try await perform(query: query, variables: _NoVariables(), token: token)
     }
 }
+
+private struct _NoVariables: Encodable {}

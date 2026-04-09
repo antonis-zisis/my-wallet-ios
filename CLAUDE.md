@@ -89,6 +89,10 @@ NetWorthEntry     id, snapshotId, type(ASSET|LIABILITY), label, amount, category
   - Product: `Supabase`
   - Handles Keychain session persistence and token refresh automatically
 
+## Git
+
+- **Never commit without explicit instruction.** Stage and show what changed, but do not run `git commit` unless the user asks.
+
 ## Conventions
 
 - Use `@Observable` (Swift 5.9+ macro) for ViewModels, not `ObservableObject`

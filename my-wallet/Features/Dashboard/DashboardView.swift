@@ -39,18 +39,16 @@ private struct ReportSummarySection: View {
                 isLoading: viewModel.isLoading
             )
 
-            HStack(alignment: .top, spacing: 12) {
-                ReportCard(
-                    badge: "Current",
-                    report: viewModel.currentReport,
-                    isLoading: viewModel.isLoading
-                )
-                ReportCard(
-                    badge: "Previous",
-                    report: viewModel.previousReport,
-                    isLoading: viewModel.isLoading
-                )
-            }
+            ReportCard(
+                badge: "Current",
+                report: viewModel.currentReport,
+                isLoading: viewModel.isLoading
+            )
+            ReportCard(
+                badge: "Previous",
+                report: viewModel.previousReport,
+                isLoading: viewModel.isLoading
+            )
         }
     }
 }
@@ -63,13 +61,13 @@ private struct TotalReportsCard: View {
 
     var body: some View {
         CardContainer {
-            VStack(alignment: .leading, spacing: 6) {
+            HStack {
                 Text("Total Reports")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-
+                Spacer()
                 Text(count.map(String.init) ?? (isLoading ? "––" : "0"))
-                    .font(.system(size: 52, weight: .bold, design: .rounded))
+                    .font(.title2.bold().monospacedDigit())
                     .redacted(reason: isLoading ? .placeholder : [])
                     .contentTransition(.numericText())
             }
@@ -87,16 +85,18 @@ private struct ReportCard: View {
     var body: some View {
         CardContainer {
             VStack(alignment: .leading, spacing: 10) {
-                BadgeLabel(text: badge)
-
                 if isLoading {
                     loadingPlaceholder
                 } else if let report {
                     reportContent(report)
                 } else {
-                    Text("No report")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                    HStack {
+                        Text("No report")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        BadgeLabel(text: badge)
+                    }
                 }
             }
         }
@@ -104,13 +104,16 @@ private struct ReportCard: View {
 
     private var loadingPlaceholder: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Loading report title")
-                .font(.headline)
-                .redacted(reason: .placeholder)
-
+            HStack {
+                Text("Loading report title")
+                    .font(.headline)
+                    .redacted(reason: .placeholder)
+                Spacer()
+                BadgeLabel(text: badge)
+                    .redacted(reason: .placeholder)
+            }
             AmountRow(icon: "arrow.up", label: "Income", amount: 0, color: .green)
                 .redacted(reason: .placeholder)
-
             AmountRow(icon: "arrow.down", label: "Expenses", amount: 0, color: .red)
                 .redacted(reason: .placeholder)
         }
@@ -118,10 +121,13 @@ private struct ReportCard: View {
 
     private func reportContent(_ report: Report) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(report.title)
-                .font(.headline)
-                .lineLimit(2)
-
+            HStack {
+                Text(report.title)
+                    .font(.headline)
+                    .lineLimit(2)
+                Spacer()
+                BadgeLabel(text: badge)
+            }
             AmountRow(icon: "arrow.up", label: "Income", amount: report.totalIncome, color: .green)
             AmountRow(icon: "arrow.down", label: "Expenses", amount: report.totalExpenses, color: .red)
         }

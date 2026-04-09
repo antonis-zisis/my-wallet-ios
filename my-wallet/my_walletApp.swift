@@ -25,8 +25,10 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if auth.isAuthenticated {
             ContentView()
+                .environment(auth)
         } else {
             LoginView()
+                .environment(auth)
         }
     }
 }
