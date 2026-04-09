@@ -20,16 +20,33 @@ iOS companion app for the my-wallet web application. Goal is to mirror the web f
 
 ```text
 my-wallet/
-├── App/                     # App entry point and root navigation
-├── Features/                # One folder per feature/screen
+├── my_walletApp.swift        # @main entry; injects AuthViewModel, shows RootView
+├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Profile)
+├── Core/
+│   ├── Config.swift          # Supabase URL/key, GraphQL endpoint
+│   ├── Supabase/
+│   │   └── SupabaseManager.swift   # Shared SupabaseClient instance
+│   ├── Network/
+│   │   └── GraphQLClient.swift     # URLSession-based GraphQL client
+│   ├── Models/
+│   │   └── Report.swift            # Report, Transaction, TransactionType
+│   ├── Extensions/
+│   │   └── Array+Safe.swift        # subscript(safe:) helper
+│   └── Components/
+│       └── CardContainer.swift     # Reusable card wrapper
+├── Features/
+│   ├── Auth/
+│   │   ├── AuthViewModel.swift     # Session state; initialize() restores Keychain session
+│   │   └── LoginView.swift
 │   ├── Dashboard/
+│   │   ├── DashboardViewModel.swift
+│   │   └── DashboardView.swift
 │   ├── Reports/
+│   │   └── ReportsView.swift       # placeholder
 │   ├── Subscriptions/
+│   │   └── SubscriptionsView.swift # placeholder
 │   └── Profile/
-├── Core/                    # Shared, non-feature code
-│   ├── Network/             # GraphQL client, request/response models
-│   ├── Models/              # Shared data models
-│   └── Extensions/          # Swift/SwiftUI extensions
+│       └── ProfileView.swift       # placeholder
 └── Assets.xcassets/
 ```
 
@@ -66,9 +83,21 @@ NetWorthSnapshot  id, userId, title, entries[]
 NetWorthEntry     id, snapshotId, type(ASSET|LIABILITY), label, amount, category
 ```
 
+## Dependencies
+
+- **supabase-swift** — `https://github.com/supabase/supabase-swift` (add via Xcode → File → Add Package Dependencies)
+  - Product: `Supabase`
+  - Handles Keychain session persistence and token refresh automatically
+
+## Git
+
+- **Never commit without explicit instruction.** Stage and show what changed, but do not run `git commit` unless the user asks.
+
 ## Conventions
 
 - Use `@Observable` (Swift 5.9+ macro) for ViewModels, not `ObservableObject`
 - Prefer `async/await` over Combine for networking
 - SF Symbols for all icons
-- No third-party dependencies until clearly needed — evaluate SwiftUI-native options first
+- No third-party dependencies unless clearly needed — evaluate SwiftUI-native options first
+- `AuthViewModel` is injected at the root and accessed in child views via `@Environment(AuthViewModel.self)`
+- Pass `auth.token` into ViewModels rather than making ViewModels auth-aware
