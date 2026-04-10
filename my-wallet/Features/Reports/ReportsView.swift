@@ -3,6 +3,7 @@ import SwiftUI
 struct ReportsView: View {
     @Environment(AuthViewModel.self) private var auth
     @State private var viewModel = ReportsViewModel()
+    @State private var showCreateSheet = false
 
     var body: some View {
         NavigationStack {
@@ -16,6 +17,16 @@ struct ReportsView: View {
             .listStyle(.insetGrouped)
             .overlay { overlayContent }
             .navigationTitle("Reports")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showCreateSheet = true } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $showCreateSheet) {
+                CreateReportSheet(viewModel: viewModel)
+            }
             .task {
                 // Run on first appear, and also re-run if a previous attempt errored
                 guard (viewModel.items.isEmpty || viewModel.error != nil),
@@ -116,6 +127,84 @@ private struct ReportRow: View {
             Text(report.relativeUpdatedAt)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - Create Report Sheet
+
+private struct CreateReportSheet: View {
+    let viewModel: ReportsViewModel
+
+    @Environment(AuthViewModel.self) private var auth
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var title = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
+
+    private let minLength = 3
+    private let maxLength = 100
+
+    private var trimmed: String { title.trimmingCharacters(in: .whitespaces) }
+    private var isValid: Bool { trimmed.count >= minLength && trimmed.count <= maxLength }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("e.g. January 2025", text: $title)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("Report Title")
+                } footer: {
+                    Text("\(title.count)/\(maxLength) · Between \(minLength)–\(maxLength) characters")
+                }
+
+                if let error {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(.red)
+                            .font(.callout)
+                    }
+                }
+            }
+            .navigationTitle("New Report")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSubmitting)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Group {
+                        if isSubmitting {
+                            ProgressView()
+                        } else {
+                            Button("Create") {
+                                Task { await submit() }
+                            }
+                            .fontWeight(.semibold)
+                            .disabled(!isValid)
+                        }
+                    }
+                }
+            }
+            .disabled(isSubmitting)
+        }
+    }
+
+    private func submit() async {
+        guard isValid, let token = auth.token else { return }
+        isSubmitting = true
+        error = nil
+        defer { isSubmitting = false }
+
+        do {
+            try await viewModel.createReport(title: trimmed, token: token)
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 }

@@ -4,6 +4,18 @@ import Foundation
 
 private let PAGE_SIZE = 20
 
+private let createReportMutation = """
+  mutation CreateReport($input: CreateReportInput!) {
+    createReport(input: $input) {
+      id
+      title
+      isLocked
+      createdAt
+      updatedAt
+    }
+  }
+"""
+
 private let getReportsQuery = """
   query GetReports($page: Int, $pageSize: Int) {
     reports(page: $page, pageSize: $pageSize) {
@@ -18,6 +30,10 @@ private let getReportsQuery = """
     }
   }
 """
+
+private struct CreateReportResponse: Decodable {
+    let createReport: Report
+}
 
 private struct ReportsResult: Decodable {
     let items: [Report]
@@ -64,6 +80,18 @@ final class ReportsViewModel {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    func createReport(title: String, token: String) async throws {
+        struct Input: Encodable { let title: String }
+        struct Vars: Encodable { let input: Input }
+        let response: CreateReportResponse = try await client.perform(
+            query: createReportMutation,
+            variables: Vars(input: Input(title: title)),
+            token: token
+        )
+        items.insert(response.createReport, at: 0)
+        totalCount += 1
     }
 
     func loadMore(token: String) async {
