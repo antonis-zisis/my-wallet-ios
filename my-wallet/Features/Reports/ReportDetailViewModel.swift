@@ -70,6 +70,7 @@ private struct UnlockReportResponse: Decodable { let unlockReport: LockResult }
 
 // MARK: - ViewModel
 
+@MainActor
 @Observable
 final class ReportDetailViewModel {
     var report: Report?
@@ -105,8 +106,11 @@ final class ReportDetailViewModel {
             variables: Vars(input: Input(id: id, title: newTitle)),
             token: token
         )
-        report?.title = response.updateReport.title
-        report?.updatedAt = response.updateReport.updatedAt
+        if var updated = report {
+            updated.title = response.updateReport.title
+            updated.updatedAt = response.updateReport.updatedAt
+            report = updated
+        }
     }
 
     func lockReport(id: String, token: String) async throws {
@@ -116,7 +120,7 @@ final class ReportDetailViewModel {
             variables: Vars(id: id),
             token: token
         )
-        report?.isLocked = response.lockReport.isLocked
+        if var updated = report { updated.isLocked = response.lockReport.isLocked; report = updated }
     }
 
     func unlockReport(id: String, token: String) async throws {
@@ -126,7 +130,7 @@ final class ReportDetailViewModel {
             variables: Vars(id: id),
             token: token
         )
-        report?.isLocked = response.unlockReport.isLocked
+        if var updated = report { updated.isLocked = response.unlockReport.isLocked; report = updated }
     }
 
     func deleteReport(id: String, token: String) async throws {

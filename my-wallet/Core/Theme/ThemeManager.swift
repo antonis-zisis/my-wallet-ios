@@ -24,6 +24,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
     }
 }
 
+@MainActor
 @Observable
 final class ThemeManager {
     private static let key = "app.theme"

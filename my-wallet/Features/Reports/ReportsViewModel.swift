@@ -46,6 +46,7 @@ private struct ReportsResponse: Decodable {
 
 // MARK: - ViewModel
 
+@MainActor
 @Observable
 final class ReportsViewModel {
     var items: [Report] = []
