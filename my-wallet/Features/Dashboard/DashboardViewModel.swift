@@ -34,6 +34,38 @@ private let getReportQuery = """
   }
 """
 
+private let getSubscriptionsQuery = """
+  query GetActiveSubscriptions {
+    subscriptions(active: true) {
+      items {
+        id
+        name
+        amount
+        billingCycle
+        isActive
+        startDate
+        monthlyCost
+      }
+      totalCount
+    }
+  }
+"""
+
+private let getNetWorthSnapshotsQuery = """
+  query GetLatestNetWorthSnapshot {
+    netWorthSnapshots(page: 1, pageSize: 1) {
+      items {
+        id
+        title
+        totalAssets
+        totalLiabilities
+        netWorth
+        createdAt
+      }
+    }
+  }
+"""
+
 // MARK: - Response types
 
 private struct ReportStub: Decodable { let id: String }
@@ -51,6 +83,23 @@ private struct ReportResponse: Decodable {
     let report: Report?
 }
 
+private struct SubscriptionsResult: Decodable {
+    let items: [Subscription]
+    let totalCount: Int
+}
+
+private struct SubscriptionsResponse: Decodable {
+    let subscriptions: SubscriptionsResult
+}
+
+private struct NetWorthSnapshotsResult: Decodable {
+    let items: [NetWorthSnapshot]
+}
+
+private struct NetWorthSnapshotsResponse: Decodable {
+    let netWorthSnapshots: NetWorthSnapshotsResult
+}
+
 // MARK: - ViewModel
 
 @Observable
@@ -59,6 +108,8 @@ final class DashboardViewModel {
     var totalReportsCount: Int?
     var currentReport: Report?
     var previousReport: Report?
+    var subscriptions: [Subscription] = []
+    var latestSnapshot: NetWorthSnapshot?
     var error: String?
 
     private let client = GraphQLClient.shared
@@ -70,18 +121,28 @@ final class DashboardViewModel {
         defer { isLoading = false }
 
         do {
-            // Fetch first 2 report stubs + total count
-            struct Vars: Encodable { let page: Int; let pageSize: Int }
-            let reportsResp: ReportsResponse = try await client.perform(
+            // Fetch reports list and subscriptions concurrently
+            struct ReportVars: Encodable { let page: Int; let pageSize: Int }
+            async let reportsResp: ReportsResponse = client.perform(
                 query: getReportsQuery,
-                variables: Vars(page: 1, pageSize: 2),
+                variables: ReportVars(page: 1, pageSize: 2),
                 token: token
             )
-            totalReportsCount = reportsResp.reports.totalCount
+            async let subsResp: SubscriptionsResponse = client.perform(
+                query: getSubscriptionsQuery,
+                token: token
+            )
+            async let snapshotResp: NetWorthSnapshotsResponse = client.perform(
+                query: getNetWorthSnapshotsQuery,
+                token: token
+            )
 
-            let items = reportsResp.reports.items
+            let (reports, subs, snapshots) = try await (reportsResp, subsResp, snapshotResp)
+            totalReportsCount = reports.reports.totalCount
+            subscriptions = subs.subscriptions.items
+            latestSnapshot = snapshots.netWorthSnapshots.items.first
 
-            // Fetch current and previous report concurrently
+            let items = reports.reports.items
             async let current = fetchReport(id: items[safe: 0]?.id, token: token)
             async let previous = fetchReport(id: items[safe: 1]?.id, token: token)
             (currentReport, previousReport) = try await (current, previous)
@@ -101,3 +162,4 @@ final class DashboardViewModel {
         return response.report
     }
 }
+
