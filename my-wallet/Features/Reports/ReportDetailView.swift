@@ -40,8 +40,12 @@ struct ReportDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar { toolbarContent }
         .sheet(isPresented: $showRenameSheet) {
-            RenameReportSheet(currentTitle: report.title) { newTitle in
-                try await performRename(newTitle: newTitle)
+            RenameReportSheet(
+                reportId: report.id,
+                currentTitle: report.title,
+                viewModel: viewModel
+            ) { updatedReport in
+                onUpdate?(updatedReport)
             }
         }
         .confirmationDialog(
@@ -178,14 +182,6 @@ struct ReportDetailView: View {
 
     // MARK: - Actions
 
-    private func performRename(newTitle: String) async throws {
-        guard let token = auth.token else { return }
-        isPerformingAction = true
-        defer { isPerformingAction = false }
-        try await viewModel.renameReport(id: report.id, newTitle: newTitle, token: token)
-        onUpdate?(viewModel.report ?? stub)
-    }
-
     private func performLock() async {
         guard let token = auth.token else { return }
         isPerformingAction = true
@@ -218,9 +214,12 @@ struct ReportDetailView: View {
 // MARK: - Rename Sheet
 
 private struct RenameReportSheet: View {
+    let reportId: String
     let currentTitle: String
-    let onRename: (String) async throws -> Void
+    let viewModel: ReportDetailViewModel
+    var onComplete: ((Report) -> Void)? = nil
 
+    @Environment(AuthViewModel.self) private var auth
     @Environment(\.dismiss) private var dismiss
     @State private var title: String
     @State private var isSubmitting = false
@@ -229,9 +228,11 @@ private struct RenameReportSheet: View {
     private let minLength = 3
     private let maxLength = 100
 
-    init(currentTitle: String, onRename: @escaping (String) async throws -> Void) {
+    init(reportId: String, currentTitle: String, viewModel: ReportDetailViewModel, onComplete: ((Report) -> Void)? = nil) {
+        self.reportId = reportId
         self.currentTitle = currentTitle
-        self.onRename = onRename
+        self.viewModel = viewModel
+        self.onComplete = onComplete
         _title = State(initialValue: currentTitle)
     }
 
@@ -286,13 +287,15 @@ private struct RenameReportSheet: View {
     }
 
     private func submit() async {
+        guard let token = auth.token else { return }
         isSubmitting = true
         error = nil
-        defer { isSubmitting = false }
         do {
-            try await onRename(trimmed)
+            try await viewModel.renameReport(id: reportId, newTitle: trimmed, token: token)
+            if let updated = viewModel.report { onComplete?(updated) }
             dismiss()
         } catch {
+            isSubmitting = false
             self.error = error.localizedDescription
         }
     }
