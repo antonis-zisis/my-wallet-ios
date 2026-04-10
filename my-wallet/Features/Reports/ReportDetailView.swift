@@ -2,9 +2,18 @@ import SwiftUI
 
 struct ReportDetailView: View {
     let stub: Report
+    var onUpdate: ((Report) -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
 
     @Environment(AuthViewModel.self) private var auth
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ReportDetailViewModel()
+    @State private var showRenameSheet = false
+    @State private var showDeleteConfirm = false
+    @State private var isPerformingAction = false
+
+    /// Always use the loaded report when available so mutations are reflected immediately.
+    private var report: Report { viewModel.report ?? stub }
 
     var body: some View {
         ScrollView {
@@ -13,9 +22,9 @@ struct ReportDetailView: View {
 
                 if viewModel.isLoading {
                     loadingContent
-                } else if let report = viewModel.report {
-                    SummaryCards(report: report)
-                    TransactionSection(transactions: report.transactions ?? [])
+                } else if let loaded = viewModel.report {
+                    SummaryCards(report: loaded)
+                    TransactionSection(transactions: loaded.transactions ?? [])
                 } else if viewModel.error != nil {
                     ContentUnavailableView(
                         "Failed to load",
@@ -27,21 +36,60 @@ struct ReportDetailView: View {
             }
             .padding()
         }
-        .navigationTitle(stub.title)
+        .navigationTitle(report.title)
         .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            if stub.isLocked {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Label("Locked", systemImage: "lock.fill")
-                        .labelStyle(.iconOnly)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+        .toolbar { toolbarContent }
+        .sheet(isPresented: $showRenameSheet) {
+            RenameReportSheet(currentTitle: report.title) { newTitle in
+                try await performRename(newTitle: newTitle)
             }
+        }
+        .confirmationDialog(
+            "Delete \"\(report.title)\"?",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Report", role: .destructive) {
+                Task { await performDelete() }
+            }
+        } message: {
+            Text("This action cannot be undone.")
         }
         .task {
             guard let token = auth.token else { return }
             await viewModel.loadReport(id: stub.id, token: token)
+        }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            if isPerformingAction {
+                ProgressView()
+            } else if !viewModel.isLoading {
+                Menu {
+                    if !report.isLocked {
+                        Button("Rename Report", systemImage: "pencil") {
+                            showRenameSheet = true
+                        }
+                        Button("Lock Report", systemImage: "lock") {
+                            Task { await performLock() }
+                        }
+                        Divider()
+                        Button("Delete Report", systemImage: "trash", role: .destructive) {
+                            showDeleteConfirm = true
+                        }
+                    } else {
+                        Button("Unlock Report", systemImage: "lock.open") {
+                            Task { await performUnlock() }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
         }
     }
 
@@ -55,7 +103,7 @@ struct ReportDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(stub.formattedCreatedAt)
+                    Text(report.formattedCreatedAt)
                         .font(.caption.weight(.medium))
                 }
                 Divider()
@@ -64,8 +112,20 @@ struct ReportDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(stub.formattedUpdatedAt)
+                    Text(report.formattedUpdatedAt)
                         .font(.caption.weight(.medium))
+                }
+                if report.isLocked {
+                    Divider()
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("Locked")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
                 }
             }
         }
@@ -113,6 +173,127 @@ struct ReportDetailView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func performRename(newTitle: String) async throws {
+        guard let token = auth.token else { return }
+        isPerformingAction = true
+        defer { isPerformingAction = false }
+        try await viewModel.renameReport(id: report.id, newTitle: newTitle, token: token)
+        onUpdate?(viewModel.report ?? stub)
+    }
+
+    private func performLock() async {
+        guard let token = auth.token else { return }
+        isPerformingAction = true
+        defer { isPerformingAction = false }
+        try? await viewModel.lockReport(id: report.id, token: token)
+        onUpdate?(viewModel.report ?? stub)
+    }
+
+    private func performUnlock() async {
+        guard let token = auth.token else { return }
+        isPerformingAction = true
+        defer { isPerformingAction = false }
+        try? await viewModel.unlockReport(id: report.id, token: token)
+        onUpdate?(viewModel.report ?? stub)
+    }
+
+    private func performDelete() async {
+        guard let token = auth.token else { return }
+        isPerformingAction = true
+        do {
+            try await viewModel.deleteReport(id: report.id, token: token)
+            onDelete?()
+            dismiss()
+        } catch {
+            isPerformingAction = false
+        }
+    }
+}
+
+// MARK: - Rename Sheet
+
+private struct RenameReportSheet: View {
+    let currentTitle: String
+    let onRename: (String) async throws -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var title: String
+    @State private var isSubmitting = false
+    @State private var error: String?
+
+    private let minLength = 3
+    private let maxLength = 100
+
+    init(currentTitle: String, onRename: @escaping (String) async throws -> Void) {
+        self.currentTitle = currentTitle
+        self.onRename = onRename
+        _title = State(initialValue: currentTitle)
+    }
+
+    private var trimmed: String { title.trimmingCharacters(in: .whitespaces) }
+    private var isValid: Bool {
+        trimmed.count >= minLength && trimmed.count <= maxLength && trimmed != currentTitle
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Report title", text: $title)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("Report Title")
+                } footer: {
+                    Text("\(title.count)/\(maxLength) · Between \(minLength)–\(maxLength) characters")
+                }
+
+                if let error {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(.red)
+                            .font(.callout)
+                    }
+                }
+            }
+            .navigationTitle("Rename Report")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSubmitting)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Group {
+                        if isSubmitting {
+                            ProgressView()
+                        } else {
+                            Button("Save") {
+                                Task { await submit() }
+                            }
+                            .fontWeight(.semibold)
+                            .disabled(!isValid)
+                        }
+                    }
+                }
+            }
+            .disabled(isSubmitting)
+        }
+    }
+
+    private func submit() async {
+        isSubmitting = true
+        error = nil
+        defer { isSubmitting = false }
+        do {
+            try await onRename(trimmed)
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 }

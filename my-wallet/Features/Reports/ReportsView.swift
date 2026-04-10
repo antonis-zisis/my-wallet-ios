@@ -46,7 +46,11 @@ struct ReportsView: View {
     private var reportRows: some View {
         ForEach(viewModel.items) { report in
             NavigationLink {
-                ReportDetailView(stub: report)
+                ReportDetailView(stub: report) { updated in
+                    viewModel.update(report: updated)
+                } onDelete: {
+                    viewModel.remove(id: report.id)
+                }
             } label: {
                 ReportRow(report: report)
             }

@@ -82,6 +82,16 @@ final class ReportsViewModel {
         }
     }
 
+    func update(report: Report) {
+        guard let index = items.firstIndex(where: { $0.id == report.id }) else { return }
+        items[index] = report
+    }
+
+    func remove(id: String) {
+        items.removeAll { $0.id == id }
+        totalCount -= 1
+    }
+
     func createReport(title: String, token: String) async throws {
         struct Input: Encodable { let title: String }
         struct Vars: Encodable { let input: Input }

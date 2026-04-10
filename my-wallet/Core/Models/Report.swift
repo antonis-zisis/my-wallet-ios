@@ -17,10 +17,10 @@ private func parseServerDate(_ raw: String) -> Date {
 
 struct Report: Decodable, Identifiable {
     let id: String
-    let title: String
-    let isLocked: Bool
+    var title: String
+    var isLocked: Bool
     let createdAt: String
-    let updatedAt: String
+    var updatedAt: String
     var transactions: [Transaction]?
 
     var totalIncome: Double {
