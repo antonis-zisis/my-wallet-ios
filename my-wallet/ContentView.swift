@@ -10,7 +10,7 @@ struct ContentView: View {
 
             ReportsView()
                 .tabItem {
-                    Label("Reports", systemImage: "chart.bar.fill")
+                    Label("Reports", systemImage: "doc.text")
                 }
 
             SubscriptionsView()

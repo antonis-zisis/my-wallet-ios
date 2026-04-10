@@ -102,6 +102,7 @@ private struct NetWorthSnapshotsResponse: Decodable {
 
 // MARK: - ViewModel
 
+@MainActor
 @Observable
 final class DashboardViewModel {
     var isLoading = false

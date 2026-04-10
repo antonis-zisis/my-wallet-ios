@@ -1,6 +1,7 @@
 import Foundation
 import Supabase
 
+@MainActor
 @Observable
 final class AuthViewModel {
     var session: Session?
