@@ -1,18 +1,128 @@
 import SwiftUI
 
 struct ReportsView: View {
+    @Environment(AuthViewModel.self) private var auth
+    @State private var viewModel = ReportsViewModel()
+
     var body: some View {
         NavigationStack {
-            ContentUnavailableView(
-                "Reports",
-                systemImage: "chart.bar.fill",
-                description: Text("Your financial reports will appear here.")
-            )
+            List {
+                if viewModel.isLoading {
+                    skeletonRows
+                } else if !viewModel.items.isEmpty {
+                    reportRows
+                }
+            }
+            .listStyle(.insetGrouped)
+            .overlay { overlayContent }
             .navigationTitle("Reports")
+            .task {
+                // Run on first appear, and also re-run if a previous attempt errored
+                guard (viewModel.items.isEmpty || viewModel.error != nil),
+                      let token = auth.token else { return }
+                await viewModel.loadInitial(token: token)
+            }
+            .refreshable {
+                guard let token = auth.token else { return }
+                await viewModel.loadInitial(token: token)
+            }
+        }
+    }
+
+    // MARK: - List content
+
+    @ViewBuilder
+    private var reportRows: some View {
+        ForEach(viewModel.items) { report in
+            NavigationLink {
+                ReportDetailView(stub: report)
+            } label: {
+                ReportRow(report: report)
+            }
+            .onAppear {
+                if report.id == viewModel.items.last?.id {
+                    Task {
+                        guard let token = auth.token else { return }
+                        await viewModel.loadMore(token: token)
+                    }
+                }
+            }
+        }
+
+        if viewModel.isLoadingMore {
+            HStack {
+                Spacer()
+                ProgressView()
+                    .padding(.vertical, 8)
+                Spacer()
+            }
+            .listRowSeparator(.hidden)
+        }
+    }
+
+    @ViewBuilder
+    private var skeletonRows: some View {
+        ForEach(0..<12, id: \.self) { _ in
+            HStack {
+                Text("Report title placeholder")
+                    .redacted(reason: .placeholder)
+                Spacer()
+                Text("Just now")
+                    .font(.caption)
+                    .redacted(reason: .placeholder)
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    // MARK: - Empty / error overlay
+
+    @ViewBuilder
+    private var overlayContent: some View {
+        if !viewModel.isLoading {
+            if viewModel.error != nil {
+                ContentUnavailableView(
+                    "Failed to load",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("Pull down to try again.")
+                )
+            } else if viewModel.items.isEmpty {
+                ContentUnavailableView(
+                    "No reports yet",
+                    systemImage: "doc.text",
+                    description: Text("Create your first report to start tracking income and expenses.")
+                )
+            }
         }
     }
 }
 
+// MARK: - Report Row
+
+private struct ReportRow: View {
+    let report: Report
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(report.title)
+                .font(.body)
+                .foregroundStyle(.primary)
+            Spacer()
+            if report.isLocked {
+                Image(systemName: "lock.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            Text(report.relativeUpdatedAt)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - Preview
+
 #Preview {
     ReportsView()
+        .environment(AuthViewModel())
 }
