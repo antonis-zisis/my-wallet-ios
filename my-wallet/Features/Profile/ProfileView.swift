@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(ThemeManager.self) private var theme
+    @Environment(AuthViewModel.self) private var auth
 
     var body: some View {
         NavigationStack {
@@ -20,6 +21,17 @@ struct ProfileView: View {
                         }
                     }
                     .listRowInsets(.init(top: 12, leading: 16, bottom: 12, trailing: 16))
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        Task { await auth.signOut() }
+                    } label: {
+                        HStack {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                            Text("Sign Out")
+                        }
+                    }
                 }
             }
             .navigationTitle("Profile")
@@ -63,4 +75,5 @@ private struct ThemeOption: View {
 #Preview {
     ProfileView()
         .environment(ThemeManager())
+        .environment(AuthViewModel())
 }
