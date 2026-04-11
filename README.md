@@ -30,14 +30,35 @@ Select a simulator or connected device and hit **Cmd+R** to build and run.
 ```text
 my-wallet-ios/
 ├── my-wallet/
-│   ├── my_walletApp.swift   # App entry point
-│   ├── ContentView.swift    # Root view
-│   └── Assets.xcassets/     # Images, icons, and colors
-└── my-wallet.xcodeproj/     # Xcode project configuration
+│   ├── my_walletApp.swift        # App entry point and RootView
+│   ├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Profile)
+│   ├── Core/
+│   │   ├── Auth/                 # BiometricAuthService (LocalAuthentication)
+│   │   ├── Config.swift          # Supabase URL/key, GraphQL endpoint
+│   │   ├── Network/              # URLSession-based GraphQL client
+│   │   ├── Models/               # Shared data models
+│   │   ├── Extensions/
+│   │   ├── Components/           # Reusable SwiftUI components
+│   │   ├── Supabase/             # Shared SupabaseClient instance
+│   │   └── Theme/                # ThemeManager
+│   ├── Features/
+│   │   ├── Auth/                 # LoginView, BiometricLockView, AuthViewModel
+│   │   ├── Dashboard/
+│   │   ├── Reports/
+│   │   ├── Subscriptions/
+│   │   ├── NetWorth/
+│   │   └── Profile/
+│   └── Assets.xcassets/
+└── my-wallet.xcodeproj/          # Xcode project configuration
 ```
 
 ## Tech Stack
 
-- **Language**: Swift
-- **UI Framework**: SwiftUI
-- **Minimum Target**: iOS 17
+- **Language**: Swift 6
+- **UI Framework**: SwiftUI (iOS 17+, targets iOS 26.2)
+- **Backend**: GraphQL (Apollo Server) with Supabase JWT auth
+- **Biometrics**: Face ID / Touch ID via LocalAuthentication
+
+## License
+
+[Elastic License 2.0](LICENSE)

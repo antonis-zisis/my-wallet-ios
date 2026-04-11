@@ -4,6 +4,7 @@ import SwiftUI
 struct my_walletApp: App {
     @State private var auth = AuthViewModel()
     @State private var theme = ThemeManager()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -14,6 +15,11 @@ struct my_walletApp: App {
                 .task {
                     await auth.initialize()
                 }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                auth.lockOnBackground()
+            }
         }
     }
 }
@@ -28,9 +34,14 @@ struct RootView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if auth.isAuthenticated {
-            ContentView()
-                .environment(auth)
-                .environment(theme)
+            if auth.isBiometricLocked {
+                BiometricLockView()
+                    .environment(auth)
+            } else {
+                ContentView()
+                    .environment(auth)
+                    .environment(theme)
+            }
         } else {
             LoginView()
                 .environment(auth)
