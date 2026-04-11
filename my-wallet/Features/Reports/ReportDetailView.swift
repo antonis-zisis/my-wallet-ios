@@ -54,6 +54,8 @@ struct ReportDetailView: View {
                     loadingContent
                 } else if let loaded = viewModel.report {
                     SummaryCards(report: loaded)
+                    ExpenseBreakdownChart(transactions: loaded.transactions ?? [])
+                    BudgetBreakdownChart(transactions: loaded.transactions ?? [])
                     TransactionSection(
                         transactions: loaded.transactions ?? [],
                         isLocked: loaded.isLocked,
