@@ -4,6 +4,7 @@ import SwiftUI
 struct my_walletApp: App {
     @State private var auth = AuthViewModel()
     @State private var theme = ThemeManager()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -14,6 +15,11 @@ struct my_walletApp: App {
                 .task {
                     await auth.initialize()
                 }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                auth.lockOnBackground()
+            }
         }
     }
 }

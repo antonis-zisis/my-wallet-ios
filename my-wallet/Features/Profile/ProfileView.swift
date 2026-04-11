@@ -12,6 +12,9 @@ struct ProfileView: View {
                 VStack(spacing: 16) {
                     personalInfoCard
                     changePasswordCard
+                    if auth.canUseBiometrics {
+                        securityCard
+                    }
                     appearanceCard
                     signOutCard
                 }
@@ -136,6 +139,15 @@ struct ProfileView: View {
                     .font(.body.weight(.medium))
                 }
                 .disabled(vm.newPassword.isEmpty || vm.confirmPassword.isEmpty || vm.isSavingPassword)
+            }
+        }
+    }
+
+    private var securityCard: some View {
+        CardContainer {
+            @Bindable var auth = auth
+            Toggle(isOn: $auth.biometricLockEnabled) {
+                Label("Require Face ID", systemImage: "faceid")
             }
         }
     }

@@ -8,6 +8,9 @@ final class AuthViewModel {
     var isLoading = true
     var signInError: String?
     var isBiometricLocked = false
+    var biometricLockEnabled: Bool = UserDefaults.standard.object(forKey: "biometricLockEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(biometricLockEnabled, forKey: "biometricLockEnabled") }
+    }
 
     private let biometrics = BiometricAuthService()
 
@@ -28,7 +31,7 @@ final class AuthViewModel {
                 self.session = validSession
                 // If a valid session was restored from Keychain, lock behind biometrics
                 if validSession != nil {
-                    isBiometricLocked = biometrics.canUseBiometrics
+                    isBiometricLocked = biometrics.canUseBiometrics && biometricLockEnabled
                 }
                 isLoading = false
             case .signedIn, .tokenRefreshed:
@@ -56,6 +59,11 @@ final class AuthViewModel {
         if success {
             isBiometricLocked = false
         }
+    }
+
+    func lockOnBackground() {
+        guard isAuthenticated, biometrics.canUseBiometrics, biometricLockEnabled else { return }
+        isBiometricLocked = true
     }
 
     func signOut() async {
