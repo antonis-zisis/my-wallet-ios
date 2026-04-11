@@ -18,6 +18,11 @@ struct ContentView: View {
                     Label("Subscriptions", systemImage: "repeat.circle")
                 }
 
+            NetWorthView()
+                .tabItem {
+                    Label("Net Worth", systemImage: "chart.line.uptrend.xyaxis")
+                }
+
             ProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
