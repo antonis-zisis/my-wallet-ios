@@ -24,29 +24,32 @@ my-wallet/
 ├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Profile)
 ├── Core/
 │   ├── Config.swift          # Supabase URL/key, GraphQL endpoint
+│   ├── Auth/
+│   │   └── BiometricAuthService.swift  # LAContext wrapper; canUseBiometrics + authenticate()
 │   ├── Supabase/
-│   │   └── SupabaseManager.swift   # Shared SupabaseClient instance
+│   │   └── SupabaseManager.swift       # Shared SupabaseClient instance
 │   ├── Network/
-│   │   └── GraphQLClient.swift     # URLSession-based GraphQL client
+│   │   └── GraphQLClient.swift         # URLSession-based GraphQL client
 │   ├── Models/
-│   │   └── Report.swift            # Report, Transaction, TransactionType
+│   │   └── Report.swift                # Report, Transaction, TransactionType
 │   ├── Extensions/
-│   │   └── Array+Safe.swift        # subscript(safe:) helper
+│   │   └── Array+Safe.swift            # subscript(safe:) helper
 │   └── Components/
-│       └── CardContainer.swift     # Reusable card wrapper
+│       └── CardContainer.swift         # Reusable card wrapper
 ├── Features/
 │   ├── Auth/
-│   │   ├── AuthViewModel.swift     # Session state; initialize() restores Keychain session
-│   │   └── LoginView.swift
+│   │   ├── AuthViewModel.swift         # Session state; biometric lock; initialize() restores Keychain session
+│   │   ├── LoginView.swift
+│   │   └── BiometricLockView.swift     # Lock screen shown when isBiometricLocked; auto-prompts Face ID
 │   ├── Dashboard/
 │   │   ├── DashboardViewModel.swift
 │   │   └── DashboardView.swift
 │   ├── Reports/
-│   │   └── ReportsView.swift       # placeholder
+│   │   └── ReportsView.swift
 │   ├── Subscriptions/
-│   │   └── SubscriptionsView.swift # placeholder
+│   │   └── SubscriptionsView.swift
 │   └── Profile/
-│       └── ProfileView.swift       # placeholder
+│       └── ProfileView.swift
 └── Assets.xcassets/
 ```
 

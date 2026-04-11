@@ -28,9 +28,14 @@ struct RootView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if auth.isAuthenticated {
-            ContentView()
-                .environment(auth)
-                .environment(theme)
+            if auth.isBiometricLocked {
+                BiometricLockView()
+                    .environment(auth)
+            } else {
+                ContentView()
+                    .environment(auth)
+                    .environment(theme)
+            }
         } else {
             LoginView()
                 .environment(auth)
