@@ -12,6 +12,8 @@ struct Subscription: Decodable, Identifiable {
     let billingCycle: BillingCycle
     let isActive: Bool
     let startDate: String
+    let endDate: String?
+    let cancelledAt: String?
     let monthlyCost: Double
 
     /// Returns the next renewal date after today, advancing by billing cycle increments.
@@ -24,6 +26,17 @@ struct Subscription: Decodable, Identifiable {
             next = Calendar.current.date(byAdding: .month, value: increment, to: next) ?? next
         }
         return next
+    }
+
+    var isCancelled: Bool { cancelledAt != nil }
+
+    var formattedEndDate: String? {
+        guard let endDate else { return nil }
+        return Self.parseDate(endDate).formatted(date: .abbreviated, time: .omitted)
+    }
+
+    var formattedNextRenewalDate: String {
+        nextRenewalDate.formatted(date: .abbreviated, time: .omitted)
     }
 
     private static func parseDate(_ raw: String) -> Date {

@@ -13,6 +13,8 @@ struct ReportsView: View {
                         skeletonSection
                     } else if !viewModel.items.isEmpty {
                         reportSection
+                    } else if viewModel.error == nil {
+                        emptyState
                     }
                 }
                 .padding(.horizontal, 20)
@@ -118,21 +120,35 @@ struct ReportsView: View {
 
     @ViewBuilder
     private var overlayContent: some View {
-        if !viewModel.isLoading {
-            if viewModel.error != nil {
-                ContentUnavailableView(
-                    "Failed to load",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text("Pull down to try again.")
-                )
-            } else if viewModel.items.isEmpty {
-                ContentUnavailableView(
-                    "No reports yet",
-                    systemImage: "doc.text",
-                    description: Text("Create your first report to start tracking income and expenses.")
-                )
-            }
+        if !viewModel.isLoading, viewModel.error != nil {
+            ContentUnavailableView(
+                "Failed to load",
+                systemImage: "exclamationmark.triangle",
+                description: Text("Pull down to try again.")
+            )
         }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 40))
+                .foregroundStyle(.quaternary)
+            Text("No reports yet.")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+            Button("Create your first report") {
+                showCreateSheet = true
+            }
+            .font(.subheadline.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
+                .foregroundStyle(Color.secondary.opacity(0.3))
+        )
     }
 }
 
