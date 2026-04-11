@@ -66,6 +66,10 @@ struct Transaction: Decodable, Identifiable {
     var formattedDate: String {
         parseServerDate(date).formatted(date: .abbreviated, time: .omitted)
     }
+
+    var dateAsDate: Date {
+        parseServerDate(date)
+    }
 }
 
 // MARK: - TransactionType

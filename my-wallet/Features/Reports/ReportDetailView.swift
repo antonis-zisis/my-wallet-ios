@@ -1,5 +1,33 @@
 import SwiftUI
 
+// MARK: - TransactionFormMode
+
+private enum TransactionFormMode: Identifiable {
+    case create(reportId: String)
+    case edit(Transaction)
+
+    var id: String {
+        switch self {
+        case .create(let rid): return "create-\(rid)"
+        case .edit(let t): return "edit-\(t.id)"
+        }
+    }
+
+    var reportId: String {
+        switch self {
+        case .create(let rid): return rid
+        case .edit(let t): return t.reportId
+        }
+    }
+
+    var transaction: Transaction? {
+        if case .edit(let t) = self { return t }
+        return nil
+    }
+}
+
+// MARK: - ReportDetailView
+
 struct ReportDetailView: View {
     let stub: Report
     var onUpdate: ((Report) -> Void)? = nil
@@ -11,6 +39,8 @@ struct ReportDetailView: View {
     @State private var showRenameSheet = false
     @State private var showDeleteConfirm = false
     @State private var isPerformingAction = false
+    @State private var transactionFormMode: TransactionFormMode? = nil
+    @State private var deletingTransaction: Transaction? = nil
 
     /// Always use the loaded report when available so mutations are reflected immediately.
     private var report: Report { viewModel.report ?? stub }
@@ -24,7 +54,13 @@ struct ReportDetailView: View {
                     loadingContent
                 } else if let loaded = viewModel.report {
                     SummaryCards(report: loaded)
-                    TransactionSection(transactions: loaded.transactions ?? [])
+                    TransactionSection(
+                        transactions: loaded.transactions ?? [],
+                        isLocked: loaded.isLocked,
+                        onAdd: { transactionFormMode = .create(reportId: loaded.id) },
+                        onEdit: { t in transactionFormMode = .edit(t) },
+                        onDeleteRequest: { t in deletingTransaction = t }
+                    )
                 } else if viewModel.error != nil {
                     ContentUnavailableView(
                         "Failed to load",
@@ -48,6 +84,9 @@ struct ReportDetailView: View {
                 onUpdate?(updatedReport)
             }
         }
+        .sheet(item: $transactionFormMode) { mode in
+            TransactionFormSheet(mode: mode, viewModel: viewModel)
+        }
         .confirmationDialog(
             "Delete \"\(report.title)\"?",
             isPresented: $showDeleteConfirm,
@@ -58,6 +97,24 @@ struct ReportDetailView: View {
             }
         } message: {
             Text("This action cannot be undone.")
+        }
+        .confirmationDialog(
+            "Delete transaction?",
+            isPresented: Binding(
+                get: { deletingTransaction != nil },
+                set: { if !$0 { deletingTransaction = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                guard let t = deletingTransaction else { return }
+                deletingTransaction = nil
+                Task { await performDeleteTransaction(t) }
+            }
+        } message: {
+            if let t = deletingTransaction {
+                Text("Delete \"\(t.description)\"? This cannot be undone.")
+            }
         }
         .task {
             guard let token = auth.token else { return }
@@ -198,6 +255,11 @@ struct ReportDetailView: View {
             isPerformingAction = false
         }
     }
+
+    private func performDeleteTransaction(_ transaction: Transaction) async {
+        guard let token = auth.token else { return }
+        try? await viewModel.deleteTransaction(id: transaction.id, token: token)
+    }
 }
 
 // MARK: - Rename Sheet
@@ -290,6 +352,154 @@ private struct RenameReportSheet: View {
     }
 }
 
+// MARK: - Transaction Form Sheet
+
+private struct TransactionFormSheet: View {
+    let mode: TransactionFormMode
+    let viewModel: ReportDetailViewModel
+
+    @Environment(AuthViewModel.self) private var auth
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var type: TransactionType
+    @State private var amountText: String
+    @State private var descriptionText: String
+    @State private var category: String
+    @State private var date: Date
+    @State private var isSubmitting = false
+    @State private var error: String?
+
+    private let expenseCategories = ["Rent", "Utilities", "Groceries", "Dining Out", "Transport",
+                                     "Health", "Entertainment", "Shopping", "Investment",
+                                     "Insurance", "Loan", "Other"]
+    private let incomeCategories = ["Salary", "Freelance", "Investment", "Gift", "Other"]
+
+    private var isEditMode: Bool {
+        if case .edit = mode { return true }
+        return false
+    }
+    private var categories: [String] { type == .expense ? expenseCategories : incomeCategories }
+    private var parsedAmount: Double? {
+        Double(amountText.replacingOccurrences(of: ",", with: "."))
+    }
+    private var isValid: Bool {
+        guard let parsedAmount, parsedAmount > 0 else { return false }
+        return !descriptionText.trimmingCharacters(in: .whitespaces).isEmpty && !category.isEmpty
+    }
+
+    init(mode: TransactionFormMode, viewModel: ReportDetailViewModel) {
+        self.mode = mode
+        self.viewModel = viewModel
+        if let t = mode.transaction {
+            _type = State(initialValue: t.type)
+            let amt = t.amount
+            _amountText = State(initialValue: amt.truncatingRemainder(dividingBy: 1) == 0
+                ? String(Int(amt)) : String(amt))
+            _descriptionText = State(initialValue: t.description)
+            _category = State(initialValue: t.category)
+            _date = State(initialValue: t.dateAsDate)
+        } else {
+            _type = State(initialValue: .expense)
+            _amountText = State(initialValue: "")
+            _descriptionText = State(initialValue: "")
+            _category = State(initialValue: "")
+            _date = State(initialValue: Date())
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Type", selection: $type) {
+                        Text("Income").tag(TransactionType.income)
+                        Text("Expense").tag(TransactionType.expense)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: type) { _, _ in category = "" }
+                } header: {
+                    Text("Type")
+                }
+
+                Section {
+                    TextField("0.00", text: $amountText)
+                        .keyboardType(.decimalPad)
+                    TextField("Description", text: $descriptionText)
+                        .autocorrectionDisabled()
+                    Picker("Category", selection: $category) {
+                        Text("Select a category").tag("")
+                        ForEach(categories, id: \.self) { cat in
+                            Text(cat).tag(cat)
+                        }
+                    }
+                    DatePicker("Date", selection: $date, displayedComponents: .date)
+                } header: {
+                    Text("Details")
+                }
+
+                if let error {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(.red)
+                            .font(.callout)
+                    }
+                }
+            }
+            .navigationTitle(isEditMode ? "Edit Transaction" : "Add Transaction")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSubmitting)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Group {
+                        if isSubmitting {
+                            ProgressView()
+                        } else {
+                            Button(isEditMode ? "Save" : "Add") {
+                                Task { await submit() }
+                            }
+                            .fontWeight(.semibold)
+                            .disabled(!isValid)
+                        }
+                    }
+                }
+            }
+            .disabled(isSubmitting)
+        }
+    }
+
+    private func submit() async {
+        guard let token = auth.token, let amount = parsedAmount else { return }
+        isSubmitting = true
+        error = nil
+
+        let dateStr = ISO8601DateFormatter().string(from: date)
+        let typeStr = type.rawValue
+        let trimmedDesc = descriptionText.trimmingCharacters(in: .whitespaces)
+
+        do {
+            switch mode {
+            case .create(let reportId):
+                try await viewModel.createTransaction(
+                    reportId: reportId, type: typeStr, amount: amount,
+                    description: trimmedDesc, category: category, date: dateStr, token: token
+                )
+            case .edit(let t):
+                try await viewModel.updateTransaction(
+                    id: t.id, type: typeStr, amount: amount,
+                    description: trimmedDesc, category: category, date: dateStr, token: token
+                )
+            }
+            dismiss()
+        } catch {
+            isSubmitting = false
+            self.error = error.localizedDescription
+        }
+    }
+}
+
 // MARK: - Summary Cards
 
 private struct SummaryCards: View {
@@ -347,6 +557,10 @@ private struct SummaryStatCard: View {
 
 private struct TransactionSection: View {
     let transactions: [Transaction]
+    let isLocked: Bool
+    let onAdd: () -> Void
+    let onEdit: (Transaction) -> Void
+    let onDeleteRequest: (Transaction) -> Void
 
     var body: some View {
         VStack(spacing: 8) {
@@ -359,6 +573,12 @@ private struct TransactionSection: View {
                     Text("\(transactions.count)")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
+                }
+                if !isLocked {
+                    Button(action: onAdd) {
+                        Image(systemName: "plus.circle.fill")
+                            .imageScale(.large)
+                    }
                 }
             }
 
@@ -375,7 +595,12 @@ private struct TransactionSection: View {
                     VStack(spacing: 0) {
                         ForEach(Array(transactions.enumerated()), id: \.element.id) { index, transaction in
                             if index > 0 { Divider() }
-                            TransactionRow(transaction: transaction)
+                            TransactionRow(
+                                transaction: transaction,
+                                isLocked: isLocked,
+                                onEdit: { onEdit(transaction) },
+                                onDeleteRequest: { onDeleteRequest(transaction) }
+                            )
                         }
                     }
                 }
@@ -386,6 +611,9 @@ private struct TransactionSection: View {
 
 private struct TransactionRow: View {
     let transaction: Transaction
+    let isLocked: Bool
+    let onEdit: () -> Void
+    let onDeleteRequest: () -> Void
 
     private var amountColor: Color { transaction.type == .income ? .green : .red }
     private var amountSign: String { transaction.type == .income ? "+" : "-" }
@@ -412,6 +640,16 @@ private struct TransactionRow: View {
             Text("\(amountSign)\(transaction.amount.formatted(.currency(code: "EUR")))")
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(amountColor)
+            if !isLocked {
+                Menu {
+                    Button("Edit", systemImage: "pencil") { onEdit() }
+                    Button("Delete", systemImage: "trash", role: .destructive) { onDeleteRequest() }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 4)
+                }
+            }
         }
         .padding(.vertical, 8)
     }
