@@ -1,5 +1,13 @@
 import Foundation
 
+struct NetWorthEntry: Decodable, Identifiable {
+    let id: String
+    let type: String
+    let label: String
+    let amount: Double
+    let category: String
+}
+
 struct NetWorthSnapshot: Decodable, Identifiable {
     let id: String
     let title: String
@@ -7,6 +15,7 @@ struct NetWorthSnapshot: Decodable, Identifiable {
     let totalLiabilities: Double
     let netWorth: Double
     let createdAt: String
+    let entries: [NetWorthEntry]?
 
     var formattedDate: String {
         let date: Date
