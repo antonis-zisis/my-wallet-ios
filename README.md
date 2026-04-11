@@ -58,3 +58,7 @@ my-wallet-ios/
 - **UI Framework**: SwiftUI (iOS 17+, targets iOS 26.2)
 - **Backend**: GraphQL (Apollo Server) with Supabase JWT auth
 - **Biometrics**: Face ID / Touch ID via LocalAuthentication
+
+## License
+
+[Elastic License 2.0](LICENSE)
