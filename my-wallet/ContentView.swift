@@ -15,7 +15,7 @@ struct ContentView: View {
 
             SubscriptionsView()
                 .tabItem {
-                    Label("Subscriptions", systemImage: "arrow.clockwise")
+                    Label("Subscriptions", systemImage: "repeat.circle")
                 }
 
             ProfileView()
