@@ -91,7 +91,8 @@ struct ReportDetailView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: report.isLocked ? "lock.fill" : "ellipsis.circle")
+                        .foregroundStyle(report.isLocked ? Color.secondary : Color.accentColor)
                 }
             }
         }
@@ -118,18 +119,6 @@ struct ReportDetailView: View {
                     Spacer()
                     Text(report.formattedUpdatedAt)
                         .font(.caption.weight(.medium))
-                }
-                if report.isLocked {
-                    Divider()
-                    HStack(spacing: 6) {
-                        Image(systemName: "lock.fill")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("Locked")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
                 }
             }
         }
