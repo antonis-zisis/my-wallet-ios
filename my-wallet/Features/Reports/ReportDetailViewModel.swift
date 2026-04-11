@@ -59,6 +59,44 @@ private let deleteReportMutation = """
   }
 """
 
+private let createTransactionMutation = """
+  mutation CreateTransaction($input: CreateTransactionInput!) {
+    createTransaction(input: $input) {
+      id
+      reportId
+      type
+      amount
+      description
+      category
+      date
+      createdAt
+      updatedAt
+    }
+  }
+"""
+
+private let updateTransactionMutation = """
+  mutation UpdateTransaction($input: UpdateTransactionInput!) {
+    updateTransaction(input: $input) {
+      id
+      reportId
+      type
+      amount
+      description
+      category
+      date
+      createdAt
+      updatedAt
+    }
+  }
+"""
+
+private let deleteTransactionMutation = """
+  mutation DeleteTransaction($id: ID!) {
+    deleteTransaction(id: $id)
+  }
+"""
+
 // MARK: - Response types
 
 private struct ReportResponse: Decodable { let report: Report? }
@@ -67,6 +105,9 @@ private struct UpdateReportResponse: Decodable { let updateReport: UpdateReportR
 private struct LockResult: Decodable { let id: String; let isLocked: Bool }
 private struct LockReportResponse: Decodable { let lockReport: LockResult }
 private struct UnlockReportResponse: Decodable { let unlockReport: LockResult }
+private struct CreateTransactionResponse: Decodable { let createTransaction: Transaction }
+private struct UpdateTransactionResponse: Decodable { let updateTransaction: Transaction }
+private struct DeleteTransactionResponse: Decodable { let deleteTransaction: Bool }
 
 // MARK: - ViewModel
 
@@ -141,5 +182,54 @@ final class ReportDetailViewModel {
             variables: Vars(id: id),
             token: token
         )
+    }
+
+    func createTransaction(reportId: String, type: String, amount: Double, description: String, category: String, date: String, token: String) async throws {
+        struct Input: Encodable {
+            let reportId: String; let type: String; let amount: Double
+            let description: String; let category: String; let date: String
+        }
+        struct Vars: Encodable { let input: Input }
+        let response: CreateTransactionResponse = try await client.perform(
+            query: createTransactionMutation,
+            variables: Vars(input: Input(reportId: reportId, type: type, amount: amount, description: description, category: category, date: date)),
+            token: token
+        )
+        if var updated = report {
+            var txns = updated.transactions ?? []
+            txns.append(response.createTransaction)
+            updated.transactions = txns
+            report = updated
+        }
+    }
+
+    func updateTransaction(id: String, type: String, amount: Double, description: String, category: String, date: String, token: String) async throws {
+        struct Input: Encodable {
+            let id: String; let type: String; let amount: Double
+            let description: String; let category: String; let date: String
+        }
+        struct Vars: Encodable { let input: Input }
+        let response: UpdateTransactionResponse = try await client.perform(
+            query: updateTransactionMutation,
+            variables: Vars(input: Input(id: id, type: type, amount: amount, description: description, category: category, date: date)),
+            token: token
+        )
+        if var updated = report {
+            updated.transactions = updated.transactions?.map { $0.id == id ? response.updateTransaction : $0 }
+            report = updated
+        }
+    }
+
+    func deleteTransaction(id: String, token: String) async throws {
+        struct Vars: Encodable { let id: String }
+        let _: DeleteTransactionResponse = try await client.perform(
+            query: deleteTransactionMutation,
+            variables: Vars(id: id),
+            token: token
+        )
+        if var updated = report {
+            updated.transactions = updated.transactions?.filter { $0.id != id }
+            report = updated
+        }
     }
 }

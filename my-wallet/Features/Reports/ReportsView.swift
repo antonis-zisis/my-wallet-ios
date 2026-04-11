@@ -7,14 +7,21 @@ struct ReportsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if viewModel.isLoading {
-                    skeletonRows
-                } else if !viewModel.items.isEmpty {
-                    reportRows
+            ScrollView {
+                VStack(spacing: 0) {
+                    if viewModel.isLoading {
+                        skeletonSection
+                    } else if !viewModel.items.isEmpty {
+                        reportSection
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
             }
-            .listStyle(.insetGrouped)
+            .refreshable {
+                guard let token = auth.token else { return }
+                await viewModel.loadInitial(token: token)
+            }
             .overlay { overlayContent }
             .navigationTitle("Reports")
             .toolbar {
@@ -33,61 +40,78 @@ struct ReportsView: View {
                       let token = auth.token else { return }
                 await viewModel.loadInitial(token: token)
             }
-            .refreshable {
-                guard let token = auth.token else { return }
-                await viewModel.loadInitial(token: token)
-            }
         }
     }
 
     // MARK: - List content
 
-    @ViewBuilder
-    private var reportRows: some View {
-        ForEach(viewModel.items) { report in
-            NavigationLink {
-                ReportDetailView(stub: report) { updated in
-                    viewModel.update(report: updated)
-                } onDelete: {
-                    viewModel.remove(id: report.id)
+    private var reportSection: some View {
+        VStack(spacing: 0) {
+            ForEach(viewModel.items) { report in
+                if report.id != viewModel.items.first?.id {
+                    Divider()
+                        .padding(.leading, 16)
                 }
-            } label: {
-                ReportRow(report: report)
-            }
-            .onAppear {
-                if report.id == viewModel.items.last?.id {
-                    Task {
-                        guard let token = auth.token else { return }
-                        await viewModel.loadMore(token: token)
+                NavigationLink {
+                    ReportDetailView(stub: report) { updated in
+                        viewModel.update(report: updated)
+                    } onDelete: {
+                        viewModel.remove(id: report.id)
+                    }
+                } label: {
+                    HStack {
+                        ReportRow(report: report)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color(.tertiaryLabel))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .onAppear {
+                    if report.id == viewModel.items.last?.id {
+                        Task {
+                            guard let token = auth.token else { return }
+                            await viewModel.loadMore(token: token)
+                        }
                     }
                 }
             }
-        }
 
-        if viewModel.isLoadingMore {
-            HStack {
-                Spacer()
-                ProgressView()
-                    .padding(.vertical, 8)
-                Spacer()
+            if viewModel.isLoadingMore {
+                Divider()
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .padding(.vertical, 8)
+                    Spacer()
+                }
             }
-            .listRowSeparator(.hidden)
         }
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
-    @ViewBuilder
-    private var skeletonRows: some View {
-        ForEach(0..<12, id: \.self) { _ in
-            HStack {
-                Text("Report title placeholder")
-                    .redacted(reason: .placeholder)
-                Spacer()
-                Text("Just now")
-                    .font(.caption)
-                    .redacted(reason: .placeholder)
+    private var skeletonSection: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<12, id: \.self) { i in
+                if i > 0 { Divider().padding(.leading, 16) }
+                HStack {
+                    Text("Report title placeholder")
+                        .redacted(reason: .placeholder)
+                    Spacer()
+                    Text("Just now")
+                        .font(.caption)
+                        .redacted(reason: .placeholder)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .padding(.vertical, 2)
         }
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
     // MARK: - Empty / error overlay
