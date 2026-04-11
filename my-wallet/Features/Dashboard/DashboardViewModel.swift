@@ -122,23 +122,26 @@ final class DashboardViewModel {
         defer { isLoading = false }
 
         do {
-            // Fetch reports list and subscriptions concurrently
+            // Sequential await avoids the Swift 6 warning "Main actor-isolated
+            // conformance cannot be used in nonisolated context" that fires when
+            // async let creates nonisolated child tasks calling Decodable inits
+            // on types whose conformances are inferred as @MainActor.
+            // Direct await on a @MainActor function does not cross that boundary.
             struct ReportVars: Encodable { let page: Int; let pageSize: Int }
-            async let reportsResp: ReportsResponse = client.perform(
+            let reports: ReportsResponse = try await client.perform(
                 query: getReportsQuery,
                 variables: ReportVars(page: 1, pageSize: 2),
                 token: token
             )
-            async let subsResp: SubscriptionsResponse = client.perform(
+            let subs: SubscriptionsResponse = try await client.perform(
                 query: getSubscriptionsQuery,
                 token: token
             )
-            async let snapshotResp: NetWorthSnapshotsResponse = client.perform(
+            let snapshots: NetWorthSnapshotsResponse = try await client.perform(
                 query: getNetWorthSnapshotsQuery,
                 token: token
             )
 
-            let (reports, subs, snapshots) = try await (reportsResp, subsResp, snapshotResp)
             totalReportsCount = reports.reports.totalCount
             subscriptions = subs.subscriptions.items
             latestSnapshot = snapshots.netWorthSnapshots.items.first
@@ -163,4 +166,3 @@ final class DashboardViewModel {
         return response.report
     }
 }
-
