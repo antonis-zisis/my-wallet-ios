@@ -432,8 +432,9 @@ struct SubscriptionsView: View {
             CardContainer {
                 VStack(spacing: 0) {
                     ForEach(Array(viewModel.activeSubscriptions.enumerated()), id: \.element.id) { index, sub in
-                        SubscriptionRow(subscription: sub)
-                            .contextMenu {
+                        HStack(spacing: 0) {
+                            SubscriptionRow(subscription: sub)
+                            Menu {
                                 Button("Edit") { subscriptionToEdit = sub }
                                 if !sub.isCancelled {
                                     Button("Cancel Subscription", role: .destructive) {
@@ -444,7 +445,13 @@ struct SubscriptionsView: View {
                                 }
                                 Divider()
                                 Button("Delete", role: .destructive) { subscriptionToDelete = sub }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 12)
                             }
+                        }
                         if index < viewModel.activeSubscriptions.count - 1 {
                             Divider()
                         }
@@ -483,12 +490,19 @@ struct SubscriptionsView: View {
                         CardContainer {
                             VStack(spacing: 0) {
                                 ForEach(Array(viewModel.inactiveSubscriptions.enumerated()), id: \.element.id) { index, sub in
-                                    SubscriptionRow(subscription: sub)
-                                        .contextMenu {
+                                    HStack(spacing: 0) {
+                                        SubscriptionRow(subscription: sub)
+                                        Menu {
                                             Button("Resume") { subscriptionToResume = sub }
                                             Divider()
                                             Button("Delete", role: .destructive) { subscriptionToDelete = sub }
+                                        } label: {
+                                            Image(systemName: "ellipsis")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                                .padding(.leading, 12)
                                         }
+                                    }
                                     if index < viewModel.inactiveSubscriptions.count - 1 {
                                         Divider()
                                     }
