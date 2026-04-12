@@ -23,6 +23,12 @@ Open the project in Xcode:
 open my-wallet.xcodeproj
 ```
 
+Configure git hooks (enforces conventional commits):
+
+```bash
+git config core.hooksPath .githooks
+```
+
 Select a simulator or connected device and hit **Cmd+R** to build and run.
 
 ## Project Structure
