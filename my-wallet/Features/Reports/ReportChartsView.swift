@@ -156,12 +156,12 @@ struct BudgetBreakdownChart: View {
         (
             "Needs",
             Color(red: 0.231, green: 0.510, blue: 0.965),
-            ["Groceries", "Dining Out", "Rent", "Transport", "Utilities", "Health", "Insurance", "Loan"]
+            ["Groceries", "Rent", "Transport", "Utilities", "Health", "Insurance", "Loan"]
         ),
         (
             "Wants",
             Color(red: 0.961, green: 0.620, blue: 0.043),
-            ["Entertainment", "Shopping", "Other"]
+            ["Dining Out", "Entertainment", "Shopping", "Other"]
         ),
         (
             "Invest",
