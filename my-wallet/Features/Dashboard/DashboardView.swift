@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 
 // MARK: - Main View
@@ -54,6 +55,9 @@ private struct ReportSummarySection: View {
                 TotalReportsCard(count: viewModel.totalReportsCount)
                 ReportCard(badge: "Current", report: viewModel.currentReport)
                 ReportCard(badge: "Previous", report: viewModel.previousReport)
+                if !viewModel.reportSummaries.isEmpty {
+                    IncomeExpensesCard(summaries: viewModel.reportSummaries)
+                }
             }
         }
     }
@@ -362,6 +366,90 @@ private struct NetWorthStatColumn: View {
                 .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Income & Expenses Card
+
+private struct IncomeExpensesCard: View {
+    let summaries: [ReportSummaryItem]
+
+    @State private var isExpanded = false
+
+    private struct BarEntry: Identifiable {
+        let id = UUID()
+        let title: String
+        let type: String
+        let amount: Double
+    }
+
+    private var entries: [BarEntry] {
+        summaries.flatMap { report in
+            [
+                BarEntry(title: report.title, type: "Income", amount: report.totalIncome),
+                BarEntry(title: report.title, type: "Expenses", amount: report.totalExpenses),
+            ]
+        }
+    }
+
+    var body: some View {
+        CardContainer {
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() }
+                } label: {
+                    HStack {
+                        Text("Income & Expenses")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    }
+                }
+                .buttonStyle(.plain)
+
+                if isExpanded {
+                    Chart(entries) { entry in
+                        BarMark(
+                            x: .value("Report", entry.title),
+                            y: .value("Amount", entry.amount)
+                        )
+                        .foregroundStyle(by: .value("Type", entry.type))
+                        .position(by: .value("Type", entry.type))
+                        .cornerRadius(3)
+                    }
+                    .chartForegroundStyleScale(["Income": Color.green, "Expenses": Color.red])
+                    .chartLegend(position: .top, alignment: .leading)
+                    .chartXAxis {
+                        AxisMarks { value in
+                            AxisValueLabel {
+                                if let t = value.as(String.self) {
+                                    Text(t.count > 8 ? String(t.prefix(7)) + "…" : t)
+                                        .font(.caption2)
+                                }
+                            }
+                            AxisGridLine()
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks { value in
+                            AxisValueLabel {
+                                if let amount = value.as(Double.self) {
+                                    Text(amount, format: .currency(code: "EUR").presentation(.narrow))
+                                        .font(.caption2)
+                                }
+                            }
+                            AxisGridLine()
+                        }
+                    }
+                    .frame(height: 220)
+                    .padding(.top, 16)
+                }
+            }
+        }
     }
 }
 

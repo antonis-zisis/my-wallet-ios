@@ -34,6 +34,21 @@ private let getReportQuery = """
   }
 """
 
+private let getReportsSummaryQuery = """
+  query GetReportsSummary {
+    reports(page: 1, pageSize: 12) {
+      items {
+        id
+        title
+        transactions {
+          type
+          amount
+        }
+      }
+    }
+  }
+"""
+
 private let getSubscriptionsQuery = """
   query GetActiveSubscriptions {
     subscriptions(active: true) {
@@ -69,6 +84,32 @@ private let getNetWorthSnapshotsQuery = """
 // MARK: - Response types
 
 private struct ReportStub: Decodable { let id: String }
+
+fileprivate struct SummaryTransaction: Decodable {
+    let type: String
+    let amount: Double
+}
+
+struct ReportSummaryItem: Decodable, Identifiable {
+    let id: String
+    let title: String
+    let totalIncome: Double
+    let totalExpenses: Double
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        let transactions = try container.decodeIfPresent([SummaryTransaction].self, forKey: .transactions) ?? []
+        totalIncome = transactions.filter { $0.type == "INCOME" }.reduce(0) { $0 + $1.amount }
+        totalExpenses = transactions.filter { $0.type == "EXPENSE" }.reduce(0) { $0 + $1.amount }
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, title, transactions }
+}
+
+private struct ReportsSummaryResult: Decodable { let items: [ReportSummaryItem] }
+private struct ReportsSummaryResponse: Decodable { let reports: ReportsSummaryResult }
 
 private struct ReportsResult: Decodable {
     let items: [ReportStub]
@@ -109,6 +150,7 @@ final class DashboardViewModel {
     var totalReportsCount: Int?
     var currentReport: Report?
     var previousReport: Report?
+    var reportSummaries: [ReportSummaryItem] = []
     var subscriptions: [Subscription] = []
     var latestSnapshot: NetWorthSnapshot?
     var error: String?
@@ -133,6 +175,10 @@ final class DashboardViewModel {
                 variables: ReportVars(page: 1, pageSize: 2),
                 token: token
             )
+            let summaries: ReportsSummaryResponse = try await client.perform(
+                query: getReportsSummaryQuery,
+                token: token
+            )
             let subs: SubscriptionsResponse = try await client.perform(
                 query: getSubscriptionsQuery,
                 token: token
@@ -143,6 +189,7 @@ final class DashboardViewModel {
             )
 
             totalReportsCount = reports.reports.totalCount
+            reportSummaries = summaries.reports.items.reversed()
             subscriptions = subs.subscriptions.items
             latestSnapshot = snapshots.netWorthSnapshots.items.first
 
