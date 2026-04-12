@@ -203,6 +203,20 @@ struct ReportDetailView: View {
                 }
             }
 
+            ForEach(["Expense Breakdown", "Budget Breakdown"], id: \.self) { title in
+                CardContainer {
+                    HStack {
+                        Text(title)
+                            .font(.headline)
+                            .redacted(reason: .placeholder)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
             CardContainer {
                 VStack(spacing: 0) {
                     ForEach(0..<5, id: \.self) { i in

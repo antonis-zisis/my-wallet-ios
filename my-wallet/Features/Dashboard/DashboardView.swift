@@ -93,6 +93,17 @@ private struct ReportSummarySection: View {
                     }
                 }
             }
+            CardContainer {
+                HStack {
+                    Text("Income & Expenses")
+                        .font(.headline)
+                        .redacted(reason: .placeholder)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 }
