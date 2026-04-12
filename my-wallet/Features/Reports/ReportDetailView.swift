@@ -54,6 +54,8 @@ struct ReportDetailView: View {
                     loadingContent
                 } else if let loaded = viewModel.report {
                     SummaryCards(report: loaded)
+                    ExpenseBreakdownChart(transactions: loaded.transactions ?? [])
+                    BudgetBreakdownChart(transactions: loaded.transactions ?? [])
                     TransactionSection(
                         transactions: loaded.transactions ?? [],
                         isLocked: loaded.isLocked,
@@ -197,6 +199,20 @@ struct ReportDetailView: View {
                                 .redacted(reason: .placeholder)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+
+            ForEach(["Expense Breakdown", "Budget Breakdown"], id: \.self) { title in
+                CardContainer {
+                    HStack {
+                        Text(title)
+                            .font(.headline)
+                            .redacted(reason: .placeholder)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
