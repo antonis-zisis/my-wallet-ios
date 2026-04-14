@@ -74,6 +74,10 @@ struct ReportDetailView: View {
             }
             .padding()
         }
+        .refreshable {
+            guard let token = auth.token else { return }
+            await viewModel.loadReport(id: stub.id, token: token)
+        }
         .navigationTitle(report.title)
         .navigationBarTitleDisplayMode(.large)
         .toolbar { toolbarContent }
