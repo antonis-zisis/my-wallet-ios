@@ -353,6 +353,7 @@ private struct RenameReportSheet: View {
         }
     }
 
+    @MainActor
     private func submit() async {
         guard let token = auth.token else { return }
         isSubmitting = true
@@ -486,6 +487,7 @@ private struct TransactionFormSheet: View {
         }
     }
 
+    @MainActor
     private func submit() async {
         guard let token = auth.token, let amount = parsedAmount else { return }
         isSubmitting = true
@@ -607,9 +609,10 @@ private struct TransactionSection: View {
                         .padding(.vertical, 8)
                 }
             } else {
+                let sorted = transactions.sorted { $0.dateAsDate > $1.dateAsDate }
                 CardContainer {
                     VStack(spacing: 0) {
-                        ForEach(Array(transactions.enumerated()), id: \.element.id) { index, transaction in
+                        ForEach(Array(sorted.enumerated()), id: \.element.id) { index, transaction in
                             if index > 0 { Divider() }
                             TransactionRow(
                                 transaction: transaction,
