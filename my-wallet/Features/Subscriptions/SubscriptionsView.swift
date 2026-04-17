@@ -166,9 +166,11 @@ private struct SubscriptionFormSheet: View {
         }
     }
 
+    private var parsedAmount: Double? { Double(amount.replacingOccurrences(of: ",", with: ".")) }
+
     private var isValid: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty &&
-        (Double(amount) ?? 0) > 0
+        (parsedAmount ?? 0) > 0
     }
 
     var body: some View {
@@ -212,7 +214,7 @@ private struct SubscriptionFormSheet: View {
                     Button(mode.title == "New Subscription" ? "Create" : "Save") {
                         let input = CreateSubscriptionInput(
                             name: name.trimmingCharacters(in: .whitespaces),
-                            amount: Double(amount) ?? 0,
+                            amount: parsedAmount ?? 0,
                             billingCycle: billingCycle.rawValue,
                             startDate: Self.dateFormatter.string(from: startDate)
                         )
@@ -250,7 +252,9 @@ private struct ResumeFormSheet: View {
         _billingCycle = State(initialValue: subscription.billingCycle)
     }
 
-    private var isValid: Bool { (Double(amount) ?? 0) > 0 }
+    private var parsedAmount: Double? { Double(amount.replacingOccurrences(of: ",", with: ".")) }
+
+    private var isValid: Bool { (parsedAmount ?? 0) > 0 }
 
     var body: some View {
         NavigationStack {
@@ -294,7 +298,7 @@ private struct ResumeFormSheet: View {
                         let input = ResumeSubscriptionInput(
                             id: subscription.id,
                             startDate: Self.dateFormatter.string(from: startDate),
-                            amount: Double(amount) ?? subscription.amount,
+                            amount: parsedAmount ?? subscription.amount,
                             billingCycle: billingCycle.rawValue
                         )
                         onSubmit(input)
