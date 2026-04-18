@@ -1,5 +1,16 @@
 import SwiftUI
 
+// MARK: - Category Constants
+
+private let expenseCategories = ["Rent", "Utilities", "Groceries", "Dining Out", "Transport",
+                                 "Health", "Entertainment", "Shopping", "Investment",
+                                 "Insurance", "Loan", "Other"]
+private let incomeCategories = ["Salary", "Freelance", "Investment", "Gift", "Other"]
+private let orderedCategories: [String] = {
+    var seen = Set<String>()
+    return (expenseCategories + incomeCategories).filter { seen.insert($0).inserted }
+}()
+
 // MARK: - TransactionFormMode
 
 private enum TransactionFormMode: Identifiable {
@@ -390,11 +401,6 @@ private struct TransactionFormSheet: View {
     @State private var isSubmitting = false
     @State private var error: String?
 
-    private let expenseCategories = ["Rent", "Utilities", "Groceries", "Dining Out", "Transport",
-                                     "Health", "Entertainment", "Shopping", "Investment",
-                                     "Insurance", "Loan", "Other"]
-    private let incomeCategories = ["Salary", "Freelance", "Investment", "Gift", "Other"]
-
     private var isEditMode: Bool {
         if case .edit = mode { return true }
         return false
@@ -575,6 +581,49 @@ private struct SummaryStatCard: View {
     }
 }
 
+// MARK: - Category Filter Bar
+
+private struct CategoryFilterBar: View {
+    let categories: [String]
+    @Binding var selected: String?
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterPill(title: "All", isSelected: selected == nil) {
+                    selected = nil
+                }
+                ForEach(categories, id: \.self) { category in
+                    FilterPill(title: category, isSelected: selected == category) {
+                        selected = selected == category ? nil : category
+                    }
+                }
+            }
+            .padding(.horizontal, 1)
+        }
+    }
+}
+
+private struct FilterPill: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(isSelected ? Color.accentColor : Color(.secondarySystemBackground))
+                .foregroundStyle(isSelected ? .white : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+        .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
+    }
+}
+
 // MARK: - Transaction Section
 
 private struct TransactionSection: View {
@@ -584,6 +633,21 @@ private struct TransactionSection: View {
     let onEdit: (Transaction) -> Void
     let onDeleteRequest: (Transaction) -> Void
 
+    @State private var selectedCategory: String? = nil
+
+    private var categories: [String] {
+        let present = Set(transactions.map(\.category))
+        let ordered = orderedCategories.filter { present.contains($0) }
+        let remainder = present.subtracting(orderedCategories).sorted()
+        return ordered + remainder
+    }
+
+    private var filtered: [Transaction] {
+        let sorted = transactions.sorted { $0.dateAsDate > $1.dateAsDate }
+        guard let cat = selectedCategory else { return sorted }
+        return sorted.filter { $0.category == cat }
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             HStack {
@@ -592,7 +656,7 @@ private struct TransactionSection: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 if !transactions.isEmpty {
-                    Text("\(transactions.count)")
+                    Text("\(filtered.count)")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
@@ -613,17 +677,29 @@ private struct TransactionSection: View {
                         .padding(.vertical, 8)
                 }
             } else {
-                let sorted = transactions.sorted { $0.dateAsDate > $1.dateAsDate }
-                CardContainer {
-                    VStack(spacing: 0) {
-                        ForEach(Array(sorted.enumerated()), id: \.element.id) { index, transaction in
-                            if index > 0 { Divider() }
-                            TransactionRow(
-                                transaction: transaction,
-                                isLocked: isLocked,
-                                onEdit: { onEdit(transaction) },
-                                onDeleteRequest: { onDeleteRequest(transaction) }
-                            )
+                if categories.count > 1 {
+                    CategoryFilterBar(categories: categories, selected: $selectedCategory)
+                }
+                if filtered.isEmpty {
+                    CardContainer {
+                        Text("No transactions in this category")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 8)
+                    }
+                } else {
+                    CardContainer {
+                        VStack(spacing: 0) {
+                            ForEach(Array(filtered.enumerated()), id: \.element.id) { index, transaction in
+                                if index > 0 { Divider() }
+                                TransactionRow(
+                                    transaction: transaction,
+                                    isLocked: isLocked,
+                                    onEdit: { onEdit(transaction) },
+                                    onDeleteRequest: { onDeleteRequest(transaction) }
+                                )
+                            }
                         }
                     }
                 }
