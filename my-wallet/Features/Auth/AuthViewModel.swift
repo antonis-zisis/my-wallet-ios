@@ -26,11 +26,11 @@ final class AuthViewModel {
         for await (event, session) in supabase.auth.authStateChanges {
             switch event {
             case .initialSession:
-                // Reject expired sessions so the user is sent to LoginView
-                let validSession = session.flatMap { $0.isExpired ? nil : $0 }
-                self.session = validSession
-                // If a valid session was restored from Keychain, lock behind biometrics
-                if validSession != nil {
+                self.session = session
+                // Lock behind biometrics whenever a stored session exists.
+                // If the token is expired Supabase will refresh it and fire .tokenRefreshed;
+                // if the refresh token is also expired Supabase fires .signedOut which clears state.
+                if session != nil {
                     isBiometricLocked = biometrics.canUseBiometrics && biometricLockEnabled
                 }
                 isLoading = false
