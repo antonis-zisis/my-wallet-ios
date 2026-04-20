@@ -147,6 +147,8 @@ private struct NetWorthSnapshotsResponse: Decodable {
 @Observable
 final class DashboardViewModel {
     var isLoading = false
+    private(set) var hasLoadedData = false
+    var showLoadingState: Bool { isLoading || !hasLoadedData }
     var totalReportsCount: Int?
     var currentReport: Report?
     var previousReport: Report?
@@ -192,6 +194,7 @@ final class DashboardViewModel {
             reportSummaries = summaries.reports.items.reversed()
             subscriptions = subs.subscriptions.items
             latestSnapshot = snapshots.netWorthSnapshots.items.first
+            hasLoadedData = true
 
             let items = reports.reports.items
             async let current = fetchReport(id: items[safe: 0]?.id, token: token)

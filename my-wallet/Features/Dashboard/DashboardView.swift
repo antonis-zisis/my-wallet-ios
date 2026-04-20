@@ -26,6 +26,12 @@ struct DashboardView: View {
                 guard let token = auth.token else { return }
                 await viewModel.loadData(token: token)
             }
+            .onChange(of: auth.token) { _, newToken in
+                guard let token = newToken,
+                      !viewModel.showLoadingState,
+                      viewModel.totalReportsCount == nil else { return }
+                Task { await viewModel.loadData(token: token) }
+            }
             .refreshable {
                 guard let token = auth.token else { return }
                 await viewModel.loadData(token: token)
@@ -43,7 +49,7 @@ private struct ReportSummarySection: View {
         VStack(spacing: 12) {
             SectionHeader(title: "Reports", systemImage: "doc.text")
 
-            if viewModel.isLoading {
+            if viewModel.showLoadingState {
                 reportsLoadingPlaceholder
             } else if (viewModel.totalReportsCount ?? 0) == 0 {
                 EmptySectionCard(
@@ -176,7 +182,7 @@ private struct SubscriptionsSection: View {
         VStack(spacing: 12) {
             SectionHeader(title: "Subscriptions", systemImage: "repeat.circle")
 
-            if viewModel.isLoading {
+            if viewModel.showLoadingState {
                 subscriptionsLoadingPlaceholder
             } else if viewModel.subscriptions.isEmpty {
                 EmptySectionCard(
@@ -248,7 +254,7 @@ private struct NetWorthSection: View {
         VStack(spacing: 12) {
             SectionHeader(title: "Net Worth", systemImage: "chart.line.uptrend.xyaxis")
 
-            if viewModel.isLoading {
+            if viewModel.showLoadingState {
                 netWorthLoadingPlaceholder
             } else if let snapshot = viewModel.latestSnapshot {
                 NetWorthCard(snapshot: snapshot)
