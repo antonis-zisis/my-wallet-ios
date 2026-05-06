@@ -114,20 +114,7 @@ struct ExpenseBreakdownChart: View {
         "Shopping", "Investment", "Other",
     ]
 
-    private static let colors: [String: Color] = [
-        "Rent":          Color(red: 0.114, green: 0.306, blue: 0.847),
-        "Utilities":     Color(red: 0.231, green: 0.510, blue: 0.965),
-        "Insurance":     Color(red: 0.376, green: 0.647, blue: 0.980),
-        "Loan":          Color(red: 0.118, green: 0.227, blue: 0.541),
-        "Groceries":     Color(red: 0.976, green: 0.451, blue: 0.086),
-        "Dining Out":    Color(red: 0.984, green: 0.573, blue: 0.235),
-        "Transport":     Color(red: 0.035, green: 0.569, blue: 0.698),
-        "Health":        Color(red: 0.082, green: 0.722, blue: 0.651),
-        "Entertainment": Color(red: 0.659, green: 0.333, blue: 0.969),
-        "Shopping":      Color(red: 0.925, green: 0.286, blue: 0.600),
-        "Investment":    Color(red: 0.063, green: 0.725, blue: 0.506),
-        "Other":         Color(red: 0.612, green: 0.639, blue: 0.686),
-    ]
+    private static let colors: [String: Color] = CategoryColors.expense
 
     private var slices: [ChartSlice] {
         var totals: [String: Double] = [:]
@@ -155,17 +142,17 @@ struct BudgetBreakdownChart: View {
     private static let buckets: [(label: String, color: Color, categories: Set<String>)] = [
         (
             "Needs",
-            Color(red: 0.231, green: 0.510, blue: 0.965),
+            CategoryColors.budgetBucket["Needs"] ?? CategoryColors.fallback,
             ["Groceries", "Rent", "Transport", "Utilities", "Health", "Insurance", "Loan"]
         ),
         (
             "Wants",
-            Color(red: 0.961, green: 0.620, blue: 0.043),
+            CategoryColors.budgetBucket["Wants"] ?? CategoryColors.fallback,
             ["Dining Out", "Entertainment", "Shopping", "Other"]
         ),
         (
             "Invest",
-            Color(red: 0.063, green: 0.725, blue: 0.506),
+            CategoryColors.budgetBucket["Invest"] ?? CategoryColors.fallback,
             ["Investment"]
         ),
     ]

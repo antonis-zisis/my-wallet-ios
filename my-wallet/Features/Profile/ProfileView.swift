@@ -20,6 +20,7 @@ struct ProfileView: View {
                 }
                 .padding()
             }
+            .background(AppColors.bgApp)
             .navigationTitle("Profile")
             .task {
                 guard let token = auth.token else { return }
@@ -206,7 +207,7 @@ private struct ThemeOption: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .background(isSelected ? Color.accentColor.opacity(0.12) : Color(.tertiarySystemBackground))
+            .background(isSelected ? Color.accentColor.opacity(0.12) : AppColors.surfaceMuted)
             .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(

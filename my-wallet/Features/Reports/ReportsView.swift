@@ -20,6 +20,7 @@ struct ReportsView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
             }
+            .background(AppColors.bgApp)
             .refreshable {
                 guard let token = auth.token else { return }
                 await viewModel.loadInitial(token: token)
@@ -65,7 +66,7 @@ struct ReportsView: View {
                         ReportRow(report: report)
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color(.tertiaryLabel))
+                            .foregroundStyle(AppColors.textTertiary)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -92,7 +93,7 @@ struct ReportsView: View {
                 }
             }
         }
-        .background(Color(.secondarySystemBackground))
+        .background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
@@ -112,7 +113,7 @@ struct ReportsView: View {
                 .padding(.vertical, 12)
             }
         }
-        .background(Color(.secondarySystemBackground))
+        .background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
@@ -147,7 +148,7 @@ struct ReportsView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
-                .foregroundStyle(Color.secondary.opacity(0.3))
+                .foregroundStyle(AppColors.border)
         )
     }
 }
