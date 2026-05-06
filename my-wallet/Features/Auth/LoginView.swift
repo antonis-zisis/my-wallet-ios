@@ -16,8 +16,11 @@ struct LoginView: View {
 
             // Logo & title
             VStack(spacing: 12) {
-                Image(systemName: "wallet.bifold.fill")
-                    .font(.system(size: 56))
+                Image("LaunchIcon")
+                    .resizable()
+                    .renderingMode(.template)
+                    .scaledToFit()
+                    .frame(width: 72, height: 72)
                     .foregroundStyle(.tint)
 
                 Text("My Wallet")
