@@ -85,6 +85,7 @@ struct ReportDetailView: View {
             }
             .padding()
         }
+        .background(AppColors.bgApp)
         .refreshable {
             guard let token = auth.token else { return }
             await viewModel.loadReport(id: stub.id, token: token)
@@ -534,19 +535,19 @@ private struct SummaryCards: View {
     let report: Report
 
     private var netBalance: Double { report.totalIncome - report.totalExpenses }
-    private var netColor: Color { netBalance >= 0 ? .green : .red }
+    private var netColor: Color { netBalance >= 0 ? AppColors.income : AppColors.expense }
 
     var body: some View {
         HStack(spacing: 12) {
             SummaryStatCard(
                 label: "Income",
                 value: report.totalIncome.formatted(.currency(code: "EUR")),
-                color: .green
+                color: AppColors.income
             )
             SummaryStatCard(
                 label: "Expenses",
                 value: report.totalExpenses.formatted(.currency(code: "EUR")),
-                color: .red
+                color: AppColors.expense
             )
             SummaryStatCard(
                 label: "Net",
@@ -615,7 +616,7 @@ private struct FilterPill: View {
                 .font(.subheadline.weight(.medium))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
-                .background(isSelected ? Color.accentColor : Color(.secondarySystemBackground))
+                .background(isSelected ? Color.accentColor : AppColors.surface)
                 .foregroundStyle(isSelected ? .white : .primary)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
         }
@@ -714,7 +715,7 @@ private struct TransactionRow: View {
     let onEdit: () -> Void
     let onDeleteRequest: () -> Void
 
-    private var amountColor: Color { transaction.type == .income ? .green : .red }
+    private var amountColor: Color { transaction.type == .income ? AppColors.income : AppColors.expense }
     private var amountSign: String { transaction.type == .income ? "+" : "-" }
 
     var body: some View {

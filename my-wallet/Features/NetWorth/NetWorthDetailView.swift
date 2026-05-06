@@ -12,7 +12,7 @@ struct NetWorthDetailView: View {
     @State private var error = false
 
     private var snapshot: NetWorthSnapshot { detail ?? stub }
-    private var netWorthColor: Color { snapshot.netWorth >= 0 ? .green : .red }
+    private var netWorthColor: Color { snapshot.netWorth >= 0 ? AppColors.income : AppColors.expense }
 
     var body: some View {
         ScrollView {
@@ -30,15 +30,16 @@ struct NetWorthDetailView: View {
                     let assets = entries.filter { $0.type == "ASSET" }
                     let liabilities = entries.filter { $0.type == "LIABILITY" }
                     if !assets.isEmpty {
-                        EntriesSection(title: "Assets", entries: assets, totalColor: .green, total: snapshot.totalAssets)
+                        EntriesSection(title: "Assets", entries: assets, totalColor: AppColors.income, total: snapshot.totalAssets)
                     }
                     if !liabilities.isEmpty {
-                        EntriesSection(title: "Liabilities", entries: liabilities, totalColor: .red, total: snapshot.totalLiabilities)
+                        EntriesSection(title: "Liabilities", entries: liabilities, totalColor: AppColors.expense, total: snapshot.totalLiabilities)
                     }
                 }
             }
             .padding()
         }
+        .background(AppColors.bgApp)
         .navigationTitle(stub.title)
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -68,8 +69,8 @@ struct NetWorthDetailView: View {
                 }
 
                 HStack(spacing: 0) {
-                    NetWorthDetailStatColumn(label: "Assets", amount: snapshot.totalAssets, color: .green)
-                    NetWorthDetailStatColumn(label: "Liabilities", amount: snapshot.totalLiabilities, color: .red)
+                    NetWorthDetailStatColumn(label: "Assets", amount: snapshot.totalAssets, color: AppColors.income)
+                    NetWorthDetailStatColumn(label: "Liabilities", amount: snapshot.totalLiabilities, color: AppColors.expense)
                     NetWorthDetailStatColumn(label: "Net Worth", amount: snapshot.netWorth, color: netWorthColor)
                 }
             }

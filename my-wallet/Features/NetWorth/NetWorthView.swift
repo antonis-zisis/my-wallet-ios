@@ -64,18 +64,18 @@ private struct CreateNetWorthSnapshotSheet: View {
                 Section("Summary") {
                     HStack {
                         Label("Assets", systemImage: "arrow.up")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(AppColors.income)
                         Spacer()
                         Text(totalAssets.formatted(.currency(code: "EUR")))
-                            .foregroundStyle(.green)
+                            .foregroundStyle(AppColors.income)
                             .monospacedDigit()
                     }
                     HStack {
                         Label("Liabilities", systemImage: "arrow.down")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(AppColors.expense)
                         Spacer()
                         Text(totalLiabilities.formatted(.currency(code: "EUR")))
-                            .foregroundStyle(.red)
+                            .foregroundStyle(AppColors.expense)
                             .monospacedDigit()
                     }
                     HStack {
@@ -84,7 +84,7 @@ private struct CreateNetWorthSnapshotSheet: View {
                         Spacer()
                         Text(netWorth.formatted(.currency(code: "EUR")))
                             .fontWeight(.semibold)
-                            .foregroundStyle(netWorth >= 0 ? Color.green : Color.red)
+                            .foregroundStyle(netWorth >= 0 ? AppColors.income : AppColors.expense)
                             .monospacedDigit()
                     }
                 }
@@ -165,7 +165,7 @@ private struct CreateNetWorthSnapshotSheet: View {
 private struct SnapshotRow: View {
     let snapshot: NetWorthSnapshot
 
-    private var netWorthColor: Color { snapshot.netWorth >= 0 ? .green : .red }
+    private var netWorthColor: Color { snapshot.netWorth >= 0 ? AppColors.income : AppColors.expense }
     private var sign: String { snapshot.netWorth >= 0 ? "+" : "" }
 
     var body: some View {
@@ -218,6 +218,7 @@ struct NetWorthView: View {
                     }
                 }
             }
+            .background(AppColors.bgApp)
             .refreshable {
                 guard let token = auth.token else { return }
                 await viewModel.load(token: token)
@@ -272,7 +273,7 @@ struct NetWorthView: View {
                             SnapshotRow(snapshot: snapshot)
                             Image(systemName: "chevron.right")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(Color(.tertiaryLabel))
+                                .foregroundStyle(AppColors.textTertiary)
                                 .padding(.leading, 8)
                         }
                     }
@@ -308,7 +309,7 @@ struct NetWorthView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
-                .foregroundStyle(Color.secondary.opacity(0.3))
+                .foregroundStyle(AppColors.border)
         )
     }
 

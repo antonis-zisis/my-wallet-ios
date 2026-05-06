@@ -8,7 +8,7 @@ struct CardContainer<Content: View>: View {
         content()
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemBackground))
+            .background(AppColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 }

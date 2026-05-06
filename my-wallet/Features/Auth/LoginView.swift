@@ -16,8 +16,11 @@ struct LoginView: View {
 
             // Logo & title
             VStack(spacing: 12) {
-                Image(systemName: "wallet.bifold.fill")
-                    .font(.system(size: 56))
+                Image("LaunchIcon")
+                    .resizable()
+                    .renderingMode(.template)
+                    .scaledToFit()
+                    .frame(width: 72, height: 72)
                     .foregroundStyle(.tint)
 
                 Text("My Wallet")
@@ -36,13 +39,13 @@ struct LoginView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .padding()
-                    .background(Color(.secondarySystemBackground))
+                    .background(AppColors.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
                 SecureField("Password", text: $password)
                     .textContentType(.password)
                     .padding()
-                    .background(Color(.secondarySystemBackground))
+                    .background(AppColors.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
                 if let error = auth.signInError {
@@ -78,6 +81,8 @@ struct LoginView: View {
         }
         .padding(.horizontal, 32)
         .frame(maxWidth: 440)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppColors.bgApp)
     }
 }
 

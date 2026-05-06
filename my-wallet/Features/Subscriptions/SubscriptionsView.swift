@@ -10,8 +10,8 @@ private struct BillingBadge: View {
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(billingCycle == .monthly ? Color.green.opacity(0.15) : Color.blue.opacity(0.15))
-            .foregroundStyle(billingCycle == .monthly ? Color.green : Color.blue)
+            .background(billingCycle == .monthly ? AppColors.income.opacity(0.15) : AppColors.brand.opacity(0.15))
+            .foregroundStyle(billingCycle == .monthly ? AppColors.income : AppColors.brand)
             .clipShape(Capsule())
     }
 }
@@ -22,8 +22,8 @@ private struct CancelledBadge: View {
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Color.red.opacity(0.15))
-            .foregroundStyle(Color.red)
+            .background(AppColors.expense.opacity(0.15))
+            .foregroundStyle(AppColors.expense)
             .clipShape(Capsule())
     }
 }
@@ -339,6 +339,7 @@ struct SubscriptionsView: View {
                 }
                 .padding()
             }
+            .background(AppColors.bgApp)
             .navigationTitle("Subscriptions")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -567,7 +568,7 @@ struct SubscriptionsView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
-                .foregroundStyle(Color.secondary.opacity(0.3))
+                .foregroundStyle(AppColors.border)
         )
     }
 }

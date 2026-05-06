@@ -21,6 +21,7 @@ struct DashboardView: View {
                 }
                 .padding()
             }
+            .background(AppColors.bgApp)
             .navigationTitle("Dashboard")
             .task {
                 guard let token = auth.token else { return }
@@ -92,9 +93,9 @@ private struct ReportSummarySection: View {
                             BadgeLabel(text: badge)
                                 .redacted(reason: .placeholder)
                         }
-                        AmountRow(icon: "arrow.up", label: "Income", amount: 0, color: .green)
+                        AmountRow(icon: "arrow.up", label: "Income", amount: 0, color: AppColors.income)
                             .redacted(reason: .placeholder)
-                        AmountRow(icon: "arrow.down", label: "Expenses", amount: 0, color: .red)
+                        AmountRow(icon: "arrow.down", label: "Expenses", amount: 0, color: AppColors.expense)
                             .redacted(reason: .placeholder)
                     }
                 }
@@ -167,8 +168,8 @@ private struct ReportCard: View {
                 Spacer()
                 BadgeLabel(text: badge)
             }
-            AmountRow(icon: "arrow.up", label: "Income", amount: report.totalIncome, color: .green)
-            AmountRow(icon: "arrow.down", label: "Expenses", amount: report.totalExpenses, color: .red)
+            AmountRow(icon: "arrow.up", label: "Income", amount: report.totalIncome, color: AppColors.income)
+            AmountRow(icon: "arrow.down", label: "Expenses", amount: report.totalExpenses, color: AppColors.expense)
         }
     }
 }
@@ -304,7 +305,7 @@ private struct NetWorthCard: View {
     let snapshot: NetWorthSnapshot
     @State private var isExpanded = false
 
-    private var netWorthColor: Color { snapshot.netWorth >= 0 ? .green : .red }
+    private var netWorthColor: Color { snapshot.netWorth >= 0 ? AppColors.income : AppColors.expense }
 
     var body: some View {
         CardContainer {
@@ -343,12 +344,12 @@ private struct NetWorthCard: View {
                             NetWorthStatColumn(
                                 label: "Assets",
                                 amount: snapshot.totalAssets,
-                                color: .green
+                                color: AppColors.income
                             )
                             NetWorthStatColumn(
                                 label: "Liabilities",
                                 amount: snapshot.totalLiabilities,
-                                color: .red
+                                color: AppColors.expense
                             )
                             NetWorthStatColumn(
                                 label: "Net Worth",
@@ -438,7 +439,7 @@ private struct IncomeExpensesCard: View {
                         .position(by: .value("Type", entry.type))
                         .cornerRadius(3)
                     }
-                    .chartForegroundStyleScale(["Income": Color.green, "Expenses": Color.red])
+                    .chartForegroundStyleScale(["Income": AppColors.income, "Expenses": AppColors.expense])
                     .chartLegend(position: .top, alignment: .leading)
                     .chartXAxis {
                         AxisMarks { value in
