@@ -1,3 +1,6 @@
+# Secrets
+my-wallet/Core/Secrets.swift
+
 # Xcode
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/

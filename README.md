@@ -29,6 +29,13 @@ Configure git hooks (enforces conventional commits):
 git config core.hooksPath .githooks
 ```
 
+Configure secrets (required to connect to Supabase):
+
+```bash
+cp my-wallet/Core/Secrets.swift.example my-wallet/Core/Secrets.swift
+# then open Secrets.swift and fill in your Supabase anon key
+```
+
 Select a simulator or connected device and hit **Cmd+R** to build and run.
 
 ## Project Structure
