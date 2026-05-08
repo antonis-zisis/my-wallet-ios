@@ -37,23 +37,23 @@ Select a simulator or connected device and hit **Cmd+R** to build and run.
 my-wallet-ios/
 ├── my-wallet/
 │   ├── my_walletApp.swift        # App entry point and RootView
-│   ├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Profile)
+│   ├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Net Worth, Profile)
 │   ├── Core/
 │   │   ├── Auth/                 # BiometricAuthService (LocalAuthentication)
-│   │   ├── Config.swift          # Supabase URL/key, GraphQL endpoint
+│   │   ├── Config.swift           # Supabase URL/key, GraphQL endpoint
 │   │   ├── Network/              # URLSession-based GraphQL client
-│   │   ├── Models/               # Shared data models
+│   │   ├── Models/               # Report, Transaction, Subscription, NetWorthSnapshot
 │   │   ├── Extensions/
-│   │   ├── Components/           # Reusable SwiftUI components
+│   │   ├── Components/           # Reusable SwiftUI components (CardContainer)
 │   │   ├── Supabase/             # Shared SupabaseClient instance
-│   │   └── Theme/                # ThemeManager
+│   │   └── Theme/                # AppColors, CategoryColors, ThemeManager
 │   ├── Features/
 │   │   ├── Auth/                 # LoginView, BiometricLockView, AuthViewModel
-│   │   ├── Dashboard/
-│   │   ├── Reports/
-│   │   ├── Subscriptions/
-│   │   ├── NetWorth/
-│   │   └── Profile/
+│   │   ├── Dashboard/            # DashboardView, DashboardViewModel
+│   │   ├── Reports/              # ReportsView, ReportDetailView, ReportChartsView + ViewModels
+│   │   ├── Subscriptions/        # SubscriptionsView, SubscriptionsViewModel
+│   │   ├── NetWorth/             # NetWorthView, NetWorthDetailView, NetWorthViewModel
+│   │   └── Profile/               # ProfileView, ProfileViewModel
 │   └── Assets.xcassets/
 └── my-wallet.xcodeproj/          # Xcode project configuration
 ```
@@ -64,6 +64,10 @@ my-wallet-ios/
 - **UI Framework**: SwiftUI (iOS 17+, targets iOS 26.2)
 - **Backend**: GraphQL (Apollo Server) with Supabase JWT auth
 - **Biometrics**: Face ID / Touch ID via LocalAuthentication
+
+## Dependencies
+
+- [supabase-swift](https://github.com/supabase/supabase-swift) — Supabase client; handles Keychain session persistence and token refresh
 
 ## License
 

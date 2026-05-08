@@ -5,13 +5,16 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var isSubmitting = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case email, password }
 
     private var isFormValid: Bool {
         !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
 
     var body: some View {
-        VStack(spacing: 40) {
+        VStack(spacing: 28) {
             Spacer()
 
             // Logo & title
@@ -40,20 +43,23 @@ struct LoginView: View {
                     .autocorrectionDisabled()
                     .padding()
                     .background(AppColors.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(focusedField == .email ? AppColors.borderStrong : AppColors.border, lineWidth: 1)
+                    )
+                    .focused($focusedField, equals: .email)
 
                 SecureField("Password", text: $password)
                     .textContentType(.password)
                     .padding()
                     .background(AppColors.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                if let error = auth.signInError {
-                    Label(error, systemImage: "exclamationmark.circle.fill")
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(focusedField == .password ? AppColors.borderStrong : AppColors.border, lineWidth: 1)
+                    )
+                    .focused($focusedField, equals: .password)
 
                 Button {
                     isSubmitting = true
@@ -70,11 +76,27 @@ struct LoginView: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+                    .padding()
+                    .background(isFormValid && !isSubmitting ? Color.accentColor : Color.accentColor.opacity(0.4))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(.plain)
                 .disabled(!isFormValid || isSubmitting)
+
+                if let error = auth.signInError {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                        Text(error)
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.red.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
             }
 
             Spacer()
