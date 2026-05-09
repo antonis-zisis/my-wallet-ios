@@ -20,10 +20,11 @@ iOS companion app for the my-wallet web application. Goal is to mirror the web f
 
 ```text
 my-wallet/
-├── my_walletApp.swift        # @main entry; injects AuthViewModel, shows RootView
-├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Profile)
+├── my_walletApp.swift        # @main entry; injects AuthViewModel + ThemeManager, shows RootView
+├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Net Worth, Profile)
 ├── Core/
-│   ├── Config.swift          # Supabase URL/key, GraphQL endpoint
+│   ├── Config.swift          # Supabase URL (delegates to Secrets.supabaseAnonKey), GraphQL endpoint
+│   ├── Secrets.swift         # Gitignored — holds supabaseAnonKey; copy from Secrets.swift.example
 │   ├── Auth/
 │   │   └── BiometricAuthService.swift  # LAContext wrapper; canUseBiometrics + authenticate()
 │   ├── Supabase/
@@ -31,11 +32,17 @@ my-wallet/
 │   ├── Network/
 │   │   └── GraphQLClient.swift         # URLSession-based GraphQL client
 │   ├── Models/
-│   │   └── Report.swift                # Report, Transaction, TransactionType
+│   │   ├── Report.swift                # Report, Transaction, TransactionType
+│   │   ├── Subscription.swift          # Subscription, BillingCycle
+│   │   └── NetWorthSnapshot.swift      # NetWorthSnapshot, NetWorthEntry, NetWorthEntryType
 │   ├── Extensions/
 │   │   └── Array+Safe.swift            # subscript(safe:) helper
-│   └── Components/
-│       └── CardContainer.swift         # Reusable card wrapper
+│   ├── Components/
+│   │   └── CardContainer.swift         # Reusable card wrapper (cornerRadius: 4)
+│   └── Theme/
+│       ├── AppColors.swift             # Semantic colour tokens (brand, surface, border, income, expense…)
+│       ├── CategoryColors.swift        # Per-category colour mapping
+│       └── ThemeManager.swift          # @Observable theme state; injected at root
 ├── Features/
 │   ├── Auth/
 │   │   ├── AuthViewModel.swift         # Session state; biometric lock; initialize() restores Keychain session
@@ -45,10 +52,20 @@ my-wallet/
 │   │   ├── DashboardViewModel.swift
 │   │   └── DashboardView.swift
 │   ├── Reports/
-│   │   └── ReportsView.swift
+│   │   ├── ReportsViewModel.swift
+│   │   ├── ReportsView.swift
+│   │   ├── ReportDetailViewModel.swift
+│   │   ├── ReportDetailView.swift      # Transactions list with category filter pills
+│   │   └── ReportChartsView.swift      # Charts embedded in report detail
 │   ├── Subscriptions/
+│   │   ├── SubscriptionsViewModel.swift
 │   │   └── SubscriptionsView.swift
+│   ├── NetWorth/
+│   │   ├── NetWorthViewModel.swift
+│   │   ├── NetWorthView.swift
+│   │   └── NetWorthDetailView.swift
 │   └── Profile/
+│       ├── ProfileViewModel.swift
 │       └── ProfileView.swift
 └── Assets.xcassets/
 ```
@@ -67,6 +84,7 @@ my-wallet/
 | Dashboard | `/` | Overview: report summary, charts, subscriptions summary, net worth |
 | Reports | `/reports` | List, create, edit, lock reports + transactions |
 | Subscriptions | `/subscriptions` | Manage recurring payments |
+| Net Worth | `/net-worth` | Snapshots of assets and liabilities |
 | Profile | `/profile` | User info and settings |
 
 ## Server API
@@ -86,6 +104,19 @@ NetWorthSnapshot  id, userId, title, entries[]
 NetWorthEntry     id, snapshotId, type(ASSET|LIABILITY), label, amount, category
 ```
 
+## Secrets
+
+Credentials are kept out of version control via `Core/Secrets.swift` (gitignored).
+
+```swift
+// Core/Secrets.swift
+enum Secrets {
+    static let supabaseAnonKey = "<your key>"
+}
+```
+
+Copy `Core/Secrets.swift.example` → `Core/Secrets.swift` and fill in the key. `Config.swift` delegates to `Secrets.supabaseAnonKey`. A missing `Secrets.swift` is a compile error, not a runtime crash.
+
 ## Dependencies
 
 - **supabase-swift** — `https://github.com/supabase/supabase-swift` (add via Xcode → File → Add Package Dependencies)
@@ -102,5 +133,7 @@ NetWorthEntry     id, snapshotId, type(ASSET|LIABILITY), label, amount, category
 - Prefer `async/await` over Combine for networking
 - SF Symbols for all icons
 - No third-party dependencies unless clearly needed — evaluate SwiftUI-native options first
-- `AuthViewModel` is injected at the root and accessed in child views via `@Environment(AuthViewModel.self)`
+- `AuthViewModel` and `ThemeManager` are injected at the root and accessed via `@Environment`
 - Pass `auth.token` into ViewModels rather than making ViewModels auth-aware
+- Use `AppColors` tokens for all colours — never hardcode colour literals
+- Border radius is **4pt** across all interactive elements (inputs, buttons, cards)
