@@ -10,13 +10,9 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 36) {
                     ReportSummarySection(viewModel: viewModel)
-                    Divider()
-                        .padding(.vertical, 16)
                     SubscriptionsSection(viewModel: viewModel)
-                    Divider()
-                        .padding(.vertical, 16)
                     NetWorthSection(viewModel: viewModel)
                 }
                 .padding()
@@ -203,13 +199,14 @@ private struct SubscriptionsSection: View {
 
     private var subscriptionsLoadingPlaceholder: some View {
         VStack(spacing: 12) {
-            CardContainer {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Loading label")
-                        .font(.caption)
-                        .redacted(reason: .placeholder)
-                    Text("0")
-                        .font(.title2.bold())
+            CardContainer(verticalPadding: 8) {
+                HStack {
+                    Text("Total")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("––")
+                        .font(.title2.bold().monospacedDigit())
                         .redacted(reason: .placeholder)
                 }
             }
@@ -420,6 +417,25 @@ private struct IncomeExpensesCard: View {
         }
     }
 
+    private static let fullMonthYearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMMM yyyy"
+        return f
+    }()
+
+    private static let shortMonthYearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM ''yy"
+        return f
+    }()
+
+    private static func shortChartLabel(_ title: String) -> String {
+        if let date = fullMonthYearFormatter.date(from: title) {
+            return shortMonthYearFormatter.string(from: date)
+        }
+        return title.count > 8 ? String(title.prefix(7)) + "…" : title
+    }
+
     var body: some View {
         CardContainer {
             VStack(alignment: .leading, spacing: 0) {
@@ -455,7 +471,7 @@ private struct IncomeExpensesCard: View {
                         AxisMarks { value in
                             AxisValueLabel {
                                 if let t = value.as(String.self) {
-                                    Text(t.count > 8 ? String(t.prefix(7)) + "…" : t)
+                                    Text(Self.shortChartLabel(t))
                                         .font(.caption2)
                                 }
                             }
@@ -546,7 +562,7 @@ private struct SubscriptionSummaryCards: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            StatCard(label: "Active", value: "\(subscriptions.count)")
+            TotalReportsCard(count: subscriptions.count)
             HStack(spacing: 12) {
                 StatCard(label: "Monthly Cost", value: totalMonthlyCost.formatted(.currency(code: "EUR")))
                 StatCard(label: "Yearly Cost", value: totalYearlyCost.formatted(.currency(code: "EUR")))
@@ -654,7 +670,7 @@ private struct BadgeLabel: View {
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(colorScheme == .dark ? Color.accentColor : Color.accentColor.opacity(0.12))
+            .background(colorScheme == .dark ? Color.accentColor : Color.accentColor.opacity(0.2))
             .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
             .clipShape(RoundedRectangle(cornerRadius: 4))
     }
