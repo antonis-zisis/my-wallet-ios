@@ -22,7 +22,7 @@ struct DashboardView: View {
                 .padding()
             }
             .background(AppColors.bgApp)
-            .navigationTitle("Dashboard")
+            .navigationTitle("Overview")
             .task {
                 guard let token = auth.token else { return }
                 await viewModel.loadData(token: token)
@@ -71,10 +71,10 @@ private struct ReportSummarySection: View {
 
     private var reportsLoadingPlaceholder: some View {
         VStack(spacing: 12) {
-            CardContainer {
+            CardContainer(verticalPadding: 8) {
                 HStack {
                     Text("Total")
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text("––")
@@ -102,7 +102,7 @@ private struct ReportSummarySection: View {
             }
             CardContainer {
                 HStack {
-                    Text("Income & Expenses")
+                    Text("Monthly Summary")
                         .font(.headline)
                         .redacted(reason: .placeholder)
                     Spacer()
@@ -121,10 +121,10 @@ private struct TotalReportsCard: View {
     let count: Int?
 
     var body: some View {
-        CardContainer {
+        CardContainer(verticalPadding: 8) {
             HStack {
                 Text("Total")
-                    .font(.subheadline)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(count.map(String.init) ?? "0")
@@ -203,6 +203,16 @@ private struct SubscriptionsSection: View {
 
     private var subscriptionsLoadingPlaceholder: some View {
         VStack(spacing: 12) {
+            CardContainer {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Loading label")
+                        .font(.caption)
+                        .redacted(reason: .placeholder)
+                    Text("0")
+                        .font(.title2.bold())
+                        .redacted(reason: .placeholder)
+                }
+            }
             HStack(spacing: 12) {
                 ForEach(0..<3, id: \.self) { _ in
                     CardContainer {
@@ -417,7 +427,7 @@ private struct IncomeExpensesCard: View {
                     withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() }
                 } label: {
                     HStack {
-                        Text("Income & Expenses")
+                        Text("Monthly Summary")
                             .font(.headline)
                             .foregroundStyle(.primary)
                         Spacer()
@@ -526,6 +536,8 @@ private struct SubscriptionSummaryCards: View {
         subscriptions.reduce(0) { $0 + $1.monthlyCost }
     }
 
+    private var totalYearlyCost: Double { totalMonthlyCost * 12 }
+
     private var percentOfIncome: String {
         guard currentIncome > 0 else { return "-" }
         let pct = (totalMonthlyCost / currentIncome) * 100
@@ -533,10 +545,13 @@ private struct SubscriptionSummaryCards: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(spacing: 12) {
             StatCard(label: "Active", value: "\(subscriptions.count)")
-            StatCard(label: "Monthly Cost", value: totalMonthlyCost.formatted(.currency(code: "EUR")))
-            StatCard(label: "% of Income", value: percentOfIncome)
+            HStack(spacing: 12) {
+                StatCard(label: "Monthly Cost", value: totalMonthlyCost.formatted(.currency(code: "EUR")))
+                StatCard(label: "Yearly Cost", value: totalYearlyCost.formatted(.currency(code: "EUR")))
+                StatCard(label: "% of Income", value: percentOfIncome)
+            }
         }
     }
 }
@@ -632,15 +647,16 @@ private struct RenewalRow: View {
 
 private struct BadgeLabel: View {
     let text: String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Text(text)
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(.tint.opacity(0.12))
-            .foregroundStyle(.tint)
-            .clipShape(Capsule())
+            .background(colorScheme == .dark ? Color.accentColor : Color.accentColor.opacity(0.12))
+            .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 }
 

@@ -7,7 +7,7 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             DashboardView()
                 .tabItem {
-                    Label("Dashboard", systemImage: "house.fill")
+                    Label("Overview", systemImage: "house.fill")
                 }
                 .tag(0)
 
