@@ -620,9 +620,19 @@ private struct StatCard: View {
 private struct UpcomingRenewalsCard: View {
     let subscriptions: [Subscription]
     @State private var isExpanded = false
+    @State private var showInfo = false
 
     private var sorted: [Subscription] {
-        subscriptions
+        let today = Calendar.current.startOfDay(for: Date())
+        return subscriptions
+            .filter { sub in
+                let days = Calendar.current.dateComponents(
+                    [.day],
+                    from: today,
+                    to: Calendar.current.startOfDay(for: sub.nextRenewalDate)
+                ).day ?? 0
+                return days <= 40
+            }
             .sorted { $0.nextRenewalDate < $1.nextRenewalDate }
             .prefix(5)
             .map { $0 }
@@ -638,6 +648,18 @@ private struct UpcomingRenewalsCard: View {
                         Text("Upcoming Renewals")
                             .font(.headline)
                             .foregroundStyle(.primary)
+                        Button { showInfo = true } label: {
+                            Image(systemName: "info.circle")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showInfo) {
+                            Text("Shows up to 5 active subscriptions renewing within the next 40 days, sorted by nearest date.")
+                                .font(.caption)
+                                .padding(12)
+                                .presentationCompactAdaptation(.popover)
+                        }
                         Spacer()
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .font(.caption.weight(.semibold))
@@ -647,13 +669,21 @@ private struct UpcomingRenewalsCard: View {
                 .buttonStyle(.plain)
 
                 if isExpanded {
-                    VStack(spacing: 0) {
-                        ForEach(Array(sorted.enumerated()), id: \.element.id) { index, sub in
-                            if index > 0 { Divider() }
-                            RenewalRow(subscription: sub)
+                    if sorted.isEmpty {
+                        Text("No renewals due in the next 40 days.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 12)
+                    } else {
+                        VStack(spacing: 0) {
+                            ForEach(Array(sorted.enumerated()), id: \.element.id) { index, sub in
+                                if index > 0 { Divider() }
+                                RenewalRow(subscription: sub)
+                            }
                         }
+                        .padding(.top, 12)
                     }
-                    .padding(.top, 12)
                 }
             }
         }
@@ -663,14 +693,52 @@ private struct UpcomingRenewalsCard: View {
 private struct RenewalRow: View {
     let subscription: Subscription
 
+    private var daysUntil: Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        let target = Calendar.current.startOfDay(for: subscription.nextRenewalDate)
+        return Calendar.current.dateComponents([.day], from: today, to: target).day ?? 0
+    }
+
+    private var urgencyLabel: String {
+        switch daysUntil {
+        case 0: return "Today"
+        case 1: return "Tomorrow"
+        default: return "in \(daysUntil)d"
+        }
+    }
+
+    private var urgencyColor: Color {
+        if daysUntil <= 3 { return .red }
+        if daysUntil <= 7 { return .orange }
+        return .secondary
+    }
+
+    private var billingCycleLabel: String {
+        subscription.billingCycle == .monthly ? "Monthly" : "Yearly"
+    }
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(subscription.name)
                     .font(.subheadline.weight(.medium))
-                Text(subscription.nextRenewalDate, style: .date)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(billingCycleLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("·")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(subscription.nextRenewalDate, format: .dateTime.month(.abbreviated).day().year())
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("·")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(urgencyLabel)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(urgencyColor)
+                }
             }
             Spacer()
             Text(subscription.amount.formatted(.currency(code: "EUR")))
