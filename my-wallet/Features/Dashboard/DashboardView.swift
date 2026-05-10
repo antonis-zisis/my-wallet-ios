@@ -566,7 +566,7 @@ private struct SubscriptionSummaryCards: View {
             HStack(spacing: 12) {
                 StatCard(label: "Monthly Cost", value: totalMonthlyCost.formatted(.currency(code: "EUR")))
                 StatCard(label: "Yearly Cost", value: totalYearlyCost.formatted(.currency(code: "EUR")))
-                StatCard(label: "% of Income", value: percentOfIncome)
+                StatCard(label: "% of Income", value: percentOfIncome, info: "Based on the income of your latest report.")
             }
         }
     }
@@ -575,15 +575,36 @@ private struct SubscriptionSummaryCards: View {
 private struct StatCard: View {
     let label: String
     let value: String
+    var info: String? = nil
+
+    @State private var showInfo = false
 
     var body: some View {
         CardContainer {
             VStack(alignment: .leading, spacing: 4) {
-                Text(label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                HStack(spacing: 3) {
+                    Text(label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    if let info {
+                        Button {
+                            showInfo = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showInfo) {
+                            Text(info)
+                                .font(.caption)
+                                .padding(12)
+                                .presentationCompactAdaptation(.popover)
+                        }
+                    }
+                }
                 Text(value)
                     .font(.title3.bold().monospacedDigit())
                     .lineLimit(1)
@@ -598,7 +619,7 @@ private struct StatCard: View {
 
 private struct UpcomingRenewalsCard: View {
     let subscriptions: [Subscription]
-    @State private var isExpanded = true
+    @State private var isExpanded = false
 
     private var sorted: [Subscription] {
         subscriptions
