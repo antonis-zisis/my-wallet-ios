@@ -12,5 +12,9 @@ struct CardContainer<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AppColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: 4))
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(AppColors.border, lineWidth: 1)
+            )
     }
 }

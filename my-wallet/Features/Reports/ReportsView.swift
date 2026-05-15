@@ -105,6 +105,10 @@ struct ReportsView: View {
         }
         .background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .strokeBorder(AppColors.border, lineWidth: 1)
+        )
     }
 
     private var skeletonSection: some View {
@@ -131,6 +135,10 @@ struct ReportsView: View {
         }
         .background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .strokeBorder(AppColors.border, lineWidth: 1)
+        )
     }
 
     // MARK: - Empty / error overlay
