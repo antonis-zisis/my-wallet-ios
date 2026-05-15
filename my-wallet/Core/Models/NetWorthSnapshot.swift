@@ -11,6 +11,7 @@ struct NetWorthEntry: Decodable, Identifiable {
 struct NetWorthSnapshot: Decodable, Identifiable {
     let id: String
     let title: String
+    let snapshotDate: String
     let totalAssets: Double
     let totalLiabilities: Double
     let netWorth: Double
@@ -18,14 +19,15 @@ struct NetWorthSnapshot: Decodable, Identifiable {
     let entries: [NetWorthEntry]?
 
     var formattedDate: String {
-        let date: Date
-        if let ms = Double(createdAt) {
-            date = Date(timeIntervalSince1970: ms / 1000)
-        } else {
-            let iso = ISO8601DateFormatter()
-            iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            date = iso.date(from: createdAt) ?? Date()
+        parsedSnapshotDate.formatted(date: .abbreviated, time: .omitted)
+    }
+
+    var parsedSnapshotDate: Date {
+        if let ms = Double(snapshotDate) {
+            return Date(timeIntervalSince1970: ms / 1000)
         }
-        return date.formatted(date: .abbreviated, time: .omitted)
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return iso.date(from: snapshotDate) ?? Date()
     }
 }
