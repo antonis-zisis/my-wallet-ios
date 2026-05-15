@@ -10,6 +10,8 @@ private let createReportMutation = """
       id
       title
       isLocked
+      transactionCount
+      netBalance
       createdAt
       updatedAt
     }
@@ -23,6 +25,8 @@ private let getReportsQuery = """
         id
         title
         isLocked
+        transactionCount
+        netBalance
         createdAt
         updatedAt
       }
@@ -56,7 +60,7 @@ final class ReportsViewModel {
     var error: String?
 
     private var currentPage = 0
-    private var totalCount = 0
+    private(set) var totalCount = 0
     private let client = GraphQLClient.shared
 
     func loadInitial(token: String) async {

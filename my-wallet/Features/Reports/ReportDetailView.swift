@@ -173,30 +173,14 @@ struct ReportDetailView: View {
         }
     }
 
-    // MARK: - Metadata Card
+    // MARK: - Metadata Caption
 
     private var metadataCard: some View {
-        CardContainer {
-            VStack(spacing: 8) {
-                HStack {
-                    Text("Created")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(report.formattedCreatedAt)
-                        .font(.caption.weight(.medium))
-                }
-                Divider()
-                HStack {
-                    Text("Updated")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(report.formattedUpdatedAt)
-                        .font(.caption.weight(.medium))
-                }
-            }
-        }
+        Text("Created \(report.formattedCreatedAt) · Updated \(report.smartUpdatedAt)")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
     }
 
     // MARK: - Loading Skeleton
@@ -324,26 +308,37 @@ private struct RenameReportSheet: View {
         trimmed.count >= minLength && trimmed.count <= maxLength && trimmed != currentTitle
     }
 
+    @FocusState private var isFocused: Bool
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Report title", text: $title)
-                        .autocorrectionDisabled()
-                } header: {
-                    Text("Report Title")
-                } footer: {
-                    Text("\(title.count)/\(maxLength) · Between \(minLength)–\(maxLength) characters")
-                }
-
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Report Title")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(AppColors.textSecondary)
+                TextField("Report title", text: $title)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(AppColors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(isFocused ? AppColors.borderStrong : AppColors.border, lineWidth: 1)
+                    )
+                    .focused($isFocused)
+                Text("\(title.count)/\(maxLength) · Between \(minLength)–\(maxLength) characters")
+                    .font(.caption)
+                    .foregroundStyle(AppColors.textTertiary)
                 if let error {
-                    Section {
-                        Text(error)
-                            .foregroundStyle(.red)
-                            .font(.callout)
-                    }
+                    Text(error)
+                        .font(.callout)
+                        .foregroundStyle(.red)
                 }
             }
+            .padding(20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(AppColors.bgApp)
             .navigationTitle("Rename Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -401,6 +396,7 @@ private struct TransactionFormSheet: View {
     @State private var date: Date
     @State private var isSubmitting = false
     @State private var error: String?
+    @State private var showDatePicker = false
 
     private var isEditMode: Bool {
         if case .edit = mode { return true }
@@ -437,41 +433,105 @@ private struct TransactionFormSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Picker("Type", selection: $type) {
-                        Text("Income").tag(TransactionType.income)
-                        Text("Expense").tag(TransactionType.expense)
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: type) { _, _ in category = "" }
-                } header: {
-                    Text("Type")
-                }
-
-                Section {
-                    TextField("0.00", text: $amountText)
-                        .keyboardType(.decimalPad)
-                    TextField("Description", text: $descriptionText)
-                        .autocorrectionDisabled()
-                    Picker("Category", selection: $category) {
-                        Text("Select a category").tag("")
-                        ForEach(categories, id: \.self) { cat in
-                            Text(cat).tag(cat)
+            ScrollView {
+                VStack(spacing: 16) {
+                    CardContainer {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 0) {
+                                typeToggleButton(.income, label: "Income")
+                                typeToggleButton(.expense, label: "Expense")
+                            }
+                            .padding(3)
+                            .background(AppColors.surfaceMuted)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(AppColors.border, lineWidth: 1))
+                            .animation(.easeInOut(duration: 0.15), value: type)
                         }
                     }
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
-                } header: {
-                    Text("Details")
-                }
 
-                if let error {
-                    Section {
+                    CardContainer {
+                        VStack(alignment: .leading, spacing: 14) {
+                            FormField(label: "Amount") {
+                                TextField("0.00", text: $amountText)
+                                    .keyboardType(.decimalPad)
+                                    .styledInput()
+                            }
+
+                            FormField(label: "Description") {
+                                TextField("Description", text: $descriptionText)
+                                    .autocorrectionDisabled()
+                                    .styledInput()
+                            }
+
+                            FormField(label: "Category") {
+                                Menu {
+                                    Picker("", selection: $category) {
+                                        Text("Select a category").tag("")
+                                        ForEach(categories, id: \.self) { cat in
+                                            Text(cat).tag(cat)
+                                        }
+                                    }
+                                } label: {
+                                    HStack {
+                                        Text(category.isEmpty ? "Select a category" : category)
+                                            .foregroundStyle(category.isEmpty ? AppColors.textTertiary : .primary)
+                                        Spacer()
+                                        Image(systemName: "chevron.up.chevron.down")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .styledInput()
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            FormField(label: "Date") {
+                                Button {
+                                    showDatePicker = true
+                                } label: {
+                                    HStack {
+                                        Text(date.formatted(date: .abbreviated, time: .omitted))
+                                            .foregroundStyle(.primary)
+                                        Spacer()
+                                        Image(systemName: "calendar")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .styledInput()
+                                }
+                                .buttonStyle(.plain)
+
+                            }
+                        }
+                    }
+
+                    if let error {
                         Text(error)
-                            .foregroundStyle(.red)
                             .font(.callout)
+                            .foregroundStyle(.red)
+                            .padding(.horizontal, 4)
                     }
                 }
+                .padding(20)
+            }
+            .background(AppColors.bgApp)
+            .sheet(isPresented: $showDatePicker) {
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer()
+                        Button("Done") { showDatePicker = false }
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 16)
+                    }
+                    DatePicker("", selection: $date, displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .labelsHidden()
+                        .padding(.horizontal, 8)
+                }
+                .presentationBackground(AppColors.bgApp)
+                .presentationDetents([.height(420)])
+                .presentationDragIndicator(.visible)
             }
             .navigationTitle(isEditMode ? "Edit Transaction" : "Add Transaction")
             .navigationBarTitleDisplayMode(.inline)
@@ -652,14 +712,17 @@ private struct TransactionSection: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                Text("Transactions")
+                Text(transactions.isEmpty ? "Transactions" : "Transactions (\(filtered.count))")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                if !transactions.isEmpty {
-                    Text("\(filtered.count)")
+                if !transactions.isEmpty, selectedCategory != nil {
+                    let filteredNet = filtered.reduce(0.0) { sum, t in
+                        t.type == .income ? sum + t.amount : sum - t.amount
+                    }
+                    Text("\(filteredNet >= 0 ? "+" : "")\(filteredNet.formatted(.currency(code: "EUR")))")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(filteredNet >= 0 ? AppColors.income : AppColors.expense)
                 }
                 if !isLocked {
                     Button(action: onAdd) {
@@ -752,6 +815,55 @@ private struct TransactionRow: View {
             }
         }
         .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Transaction Form Helpers
+
+extension TransactionFormSheet {
+    @ViewBuilder
+    func typeToggleButton(_ t: TransactionType, label: String) -> some View {
+        Button {
+            type = t
+            category = ""
+        } label: {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .background(type == t ? AppColors.surface : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .foregroundStyle(type == t ? .primary : AppColors.textSecondary)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Form Helpers
+
+private struct FormField<Content: View>: View {
+    let label: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(AppColors.textSecondary)
+            content()
+        }
+    }
+}
+
+private extension View {
+    func styledInput() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AppColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(AppColors.border, lineWidth: 1))
     }
 }
 
