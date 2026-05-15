@@ -8,6 +8,7 @@ private let getNetWorthSnapshotsQuery = """
       items {
         id
         title
+        snapshotDate
         totalAssets
         totalLiabilities
         netWorth
@@ -23,6 +24,7 @@ private let getNetWorthSnapshotQuery = """
     netWorthSnapshot(id: $id) {
       id
       title
+      snapshotDate
       totalAssets
       totalLiabilities
       netWorth
@@ -43,6 +45,7 @@ private let createNetWorthSnapshotMutation = """
     createNetWorthSnapshot(input: $input) {
       id
       title
+      snapshotDate
       totalAssets
       totalLiabilities
       netWorth

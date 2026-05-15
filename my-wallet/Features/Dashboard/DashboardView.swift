@@ -265,7 +265,11 @@ private struct NetWorthSection: View {
             if viewModel.showLoadingState {
                 netWorthLoadingPlaceholder
             } else if let snapshot = viewModel.latestSnapshot {
-                NetWorthCard(snapshot: snapshot)
+                NetWorthCard(
+                    snapshot: snapshot,
+                    previousSnapshot: viewModel.previousSnapshot,
+                    recentSnapshots: viewModel.recentSnapshots
+                )
             } else {
                 EmptySectionCard(
                     systemImage: "chart.line.uptrend.xyaxis",
@@ -278,29 +282,14 @@ private struct NetWorthSection: View {
 
     private var netWorthLoadingPlaceholder: some View {
         CardContainer {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Net Worth")
-                        .font(.headline)
-                        .redacted(reason: .placeholder)
-                    Spacer()
-                    Text("€00,000")
-                        .font(.headline)
-                        .redacted(reason: .placeholder)
-                }
-                HStack(spacing: 12) {
-                    ForEach(["Assets", "Liabilities", "Net Worth"], id: \.self) { label in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(label)
-                                .font(.caption)
-                                .redacted(reason: .placeholder)
-                            Text("€0")
-                                .font(.title3.bold())
-                                .redacted(reason: .placeholder)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
+            HStack {
+                Text("Net Worth")
+                    .font(.headline)
+                    .redacted(reason: .placeholder)
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -310,9 +299,31 @@ private struct NetWorthSection: View {
 
 private struct NetWorthCard: View {
     let snapshot: NetWorthSnapshot
+    let previousSnapshot: NetWorthSnapshot?
+    let recentSnapshots: [NetWorthSnapshot]
     @State private var isExpanded = false
 
     private var netWorthColor: Color { snapshot.netWorth >= 0 ? AppColors.income : AppColors.expense }
+
+    private var delta: Double? {
+        guard let prev = previousSnapshot else { return nil }
+        return snapshot.netWorth - prev.netWorth
+    }
+
+    private var daysAgo: Int {
+        let date = snapshot.parsedSnapshotDate
+        return max(0, Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0)
+    }
+
+    private var isStale: Bool { daysAgo > 45 }
+
+    private var stalenessText: String {
+        switch daysAgo {
+        case 0: return "Last updated today"
+        case 1: return "Last updated yesterday"
+        default: return "Last updated \(daysAgo) days ago"
+        }
+    }
 
     var body: some View {
         CardContainer {
@@ -324,22 +335,21 @@ private struct NetWorthCard: View {
                         Text("Net Worth")
                             .font(.headline)
                             .foregroundStyle(.primary)
-                        Text(snapshot.netWorth.formatted(.currency(code: "EUR")))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(netWorthColor)
                         Spacer()
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        Image(systemName: "chevron.down")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     }
                 }
                 .buttonStyle(.plain)
 
                 if isExpanded {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(alignment: .firstTextBaseline) {
                             Text(snapshot.title)
                                 .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.tint)
                                 .lineLimit(1)
                             Spacer()
                             Text(snapshot.formattedDate)
@@ -347,50 +357,66 @@ private struct NetWorthCard: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        HStack(spacing: 12) {
-                            NetWorthStatColumn(
-                                label: "Assets",
-                                amount: snapshot.totalAssets,
-                                color: AppColors.income
-                            )
-                            NetWorthStatColumn(
-                                label: "Liabilities",
-                                amount: snapshot.totalLiabilities,
-                                color: AppColors.expense
-                            )
-                            NetWorthStatColumn(
-                                label: "Net Worth",
-                                amount: snapshot.netWorth,
-                                color: netWorthColor
-                            )
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(snapshot.netWorth, format: .currency(code: "EUR"))
+                                .font(.title.bold())
+                                .foregroundStyle(netWorthColor)
+
+                            if let delta {
+                                let deltaPositive = delta >= 0
+                                HStack(spacing: 4) {
+                                    Image(systemName: deltaPositive ? "arrow.up" : "arrow.down")
+                                        .font(.caption.weight(.semibold))
+                                    Text(
+                                        "\(deltaPositive ? "+" : "-")\(abs(delta).formatted(.currency(code: "EUR"))) since \(previousSnapshot!.title)"
+                                    )
+                                    .font(.caption.weight(.medium))
+                                }
+                                .foregroundStyle(deltaPositive ? AppColors.income : AppColors.expense)
+                            }
                         }
+
+                        if recentSnapshots.count >= 2 {
+                            NetWorthSparkline(snapshots: recentSnapshots, isPositive: snapshot.netWorth >= 0)
+                        }
+
+                        Text(isStale ? "\(stalenessText) — time for a new snapshot?" : stalenessText)
+                            .font(.caption)
+                            .foregroundStyle(isStale ? Color.orange : Color.secondary)
                     }
-                    .padding(.top, 12)
+                    .padding(.top, 16)
                 }
             }
         }
     }
 }
 
-private struct NetWorthStatColumn: View {
-    let label: String
-    let amount: Double
-    let color: Color
+private struct NetWorthSparkline: View {
+    let snapshots: [NetWorthSnapshot]
+    let isPositive: Bool
+
+    private struct SparkPoint: Identifiable {
+        let id: Int
+        let netWorth: Double
+    }
+
+    private var points: [SparkPoint] {
+        snapshots.enumerated().map { SparkPoint(id: $0.offset, netWorth: $0.element.netWorth) }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Text(amount.formatted(.currency(code: "EUR")))
-                .font(.subheadline.weight(.semibold).monospacedDigit())
-                .foregroundStyle(color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+        Chart(points) { point in
+            LineMark(
+                x: .value("Index", point.id),
+                y: .value("Net Worth", point.netWorth)
+            )
+            .foregroundStyle(isPositive ? AppColors.income : AppColors.expense)
+            .interpolationMethod(.catmullRom)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .chartLegend(.hidden)
+        .frame(height: 48)
     }
 }
 

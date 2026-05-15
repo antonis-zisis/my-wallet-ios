@@ -68,10 +68,11 @@ private let getSubscriptionsQuery = """
 
 private let getNetWorthSnapshotsQuery = """
   query GetLatestNetWorthSnapshot {
-    netWorthSnapshots(page: 1, pageSize: 1) {
+    netWorthSnapshots(page: 1, pageSize: 6) {
       items {
         id
         title
+        snapshotDate
         totalAssets
         totalLiabilities
         netWorth
@@ -155,6 +156,8 @@ final class DashboardViewModel {
     var reportSummaries: [ReportSummaryItem] = []
     var subscriptions: [Subscription] = []
     var latestSnapshot: NetWorthSnapshot?
+    var previousSnapshot: NetWorthSnapshot?
+    var recentSnapshots: [NetWorthSnapshot] = []
     var error: String?
 
     private let client = GraphQLClient.shared
@@ -193,7 +196,10 @@ final class DashboardViewModel {
             totalReportsCount = reports.reports.totalCount
             reportSummaries = summaries.reports.items.reversed()
             subscriptions = subs.subscriptions.items
-            latestSnapshot = snapshots.netWorthSnapshots.items.first
+            let snapshotItems = snapshots.netWorthSnapshots.items
+            latestSnapshot = snapshotItems.first
+            previousSnapshot = snapshotItems.count >= 2 ? snapshotItems[1] : nil
+            recentSnapshots = Array(snapshotItems.prefix(6).reversed())
             hasLoadedData = true
 
             let items = reports.reports.items
