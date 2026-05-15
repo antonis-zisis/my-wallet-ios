@@ -19,6 +19,8 @@ struct Report: Decodable, Identifiable {
     let id: String
     var title: String
     var isLocked: Bool
+    var transactionCount: Int?
+    var netBalance: Double?
     let createdAt: String
     var updatedAt: String
     var transactions: [Transaction]?
@@ -35,11 +37,19 @@ struct Report: Decodable, Identifiable {
             .reduce(0) { $0 + $1.amount }
     }
 
-    var relativeUpdatedAt: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: parseServerDate(updatedAt), relativeTo: Date())
+    var smartUpdatedAt: String {
+        let date = parseServerDate(updatedAt)
+        let now = Date()
+        let days = Calendar.current.dateComponents([.day], from: date, to: now).day ?? 0
+        if days < 30 {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            return formatter.localizedString(for: date, relativeTo: now)
+        }
+        return date.formatted(.dateTime.month(.abbreviated).day().year())
     }
+
+    var relativeUpdatedAt: String { smartUpdatedAt }
 
     var formattedCreatedAt: String {
         parseServerDate(createdAt).formatted(date: .abbreviated, time: .omitted)

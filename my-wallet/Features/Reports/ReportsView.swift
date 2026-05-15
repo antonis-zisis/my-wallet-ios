@@ -8,13 +8,23 @@ struct ReportsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 8) {
                     if viewModel.isLoading {
+                        Text("00 reports")
+                            .font(.subheadline)
+                            .redacted(reason: .placeholder)
+                            .padding(.horizontal, 4)
                         skeletonSection
-                    } else if !viewModel.items.isEmpty {
-                        reportSection
-                    } else if viewModel.error == nil {
-                        emptyState
+                    } else {
+                        if !viewModel.items.isEmpty {
+                            Text("\(viewModel.totalCount) \(viewModel.totalCount == 1 ? "report" : "reports")")
+                                .font(.subheadline)
+                                .foregroundStyle(AppColors.textSecondary)
+                                .padding(.horizontal, 4)
+                            reportSection
+                        } else if viewModel.error == nil {
+                            emptyState
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -62,7 +72,7 @@ struct ReportsView: View {
                         viewModel.remove(id: report.id)
                     }
                 } label: {
-                    HStack {
+                    HStack(alignment: .center, spacing: 8) {
                         ReportRow(report: report)
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
@@ -99,14 +109,20 @@ struct ReportsView: View {
 
     private var skeletonSection: some View {
         VStack(spacing: 0) {
-            ForEach(0..<12, id: \.self) { i in
+            ForEach(0..<6, id: \.self) { i in
                 if i > 0 { Divider().padding(.leading, 16) }
-                HStack {
-                    Text("Report title placeholder")
-                        .redacted(reason: .placeholder)
+                HStack(alignment: .center, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Report title placeholder")
+                            .font(.body)
+                            .redacted(reason: .placeholder)
+                        Text("12 transactions · 2 hours ago")
+                            .font(.caption)
+                            .redacted(reason: .placeholder)
+                    }
                     Spacer()
-                    Text("Just now")
-                        .font(.caption)
+                    Text("+€0,000.00")
+                        .font(.subheadline.weight(.medium))
                         .redacted(reason: .placeholder)
                 }
                 .padding(.horizontal, 16)
@@ -158,20 +174,36 @@ struct ReportsView: View {
 private struct ReportRow: View {
     let report: Report
 
+    private var subtitle: String {
+        var parts: [String] = []
+        if let count = report.transactionCount {
+            parts.append("\(count) \(count == 1 ? "transaction" : "transactions")")
+        }
+        parts.append(report.smartUpdatedAt)
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
-        HStack(spacing: 8) {
-            Text(report.title)
-                .font(.body)
-                .foregroundStyle(.primary)
-            Spacer()
-            if report.isLocked {
-                Image(systemName: "lock.fill")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(report.title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(AppColors.textSecondary)
             }
-            Text(report.relativeUpdatedAt)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Spacer()
+            if let balance = report.netBalance {
+                let positive = balance >= 0
+                Text("\(positive ? "+" : "")\(balance.formatted(.currency(code: "EUR")))")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(positive ? AppColors.income : AppColors.expense)
+            }
+            Image(systemName: "lock.fill")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .opacity(report.isLocked ? 1 : 0)
         }
     }
 }
@@ -194,26 +226,37 @@ private struct CreateReportSheet: View {
     private var trimmed: String { title.trimmingCharacters(in: .whitespaces) }
     private var isValid: Bool { trimmed.count >= minLength && trimmed.count <= maxLength }
 
+    @FocusState private var isFocused: Bool
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("e.g. January 2025", text: $title)
-                        .autocorrectionDisabled()
-                } header: {
-                    Text("Report Title")
-                } footer: {
-                    Text("\(title.count)/\(maxLength) · Between \(minLength)–\(maxLength) characters")
-                }
-
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Report Title")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(AppColors.textSecondary)
+                TextField("e.g. January 2025", text: $title)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(AppColors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(isFocused ? AppColors.borderStrong : AppColors.border, lineWidth: 1)
+                    )
+                    .focused($isFocused)
+                Text("\(title.count)/\(maxLength) · Between \(minLength)–\(maxLength) characters")
+                    .font(.caption)
+                    .foregroundStyle(AppColors.textTertiary)
                 if let error {
-                    Section {
-                        Text(error)
-                            .foregroundStyle(.red)
-                            .font(.callout)
-                    }
+                    Text(error)
+                        .font(.callout)
+                        .foregroundStyle(.red)
                 }
             }
+            .padding(20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(AppColors.bgApp)
             .navigationTitle("New Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
