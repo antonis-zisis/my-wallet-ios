@@ -36,7 +36,7 @@ private let getReportQuery = """
 
 private let getReportsSummaryQuery = """
   query GetReportsSummary {
-    reports(page: 1, pageSize: 12) {
+    reports(page: 1, pageSize: 6) {
       items {
         id
         title
