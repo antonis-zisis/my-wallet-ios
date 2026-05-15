@@ -173,30 +173,14 @@ struct ReportDetailView: View {
         }
     }
 
-    // MARK: - Metadata Card
+    // MARK: - Metadata Caption
 
     private var metadataCard: some View {
-        CardContainer {
-            VStack(spacing: 8) {
-                HStack {
-                    Text("Created")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(report.formattedCreatedAt)
-                        .font(.caption.weight(.medium))
-                }
-                Divider()
-                HStack {
-                    Text("Updated")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(report.formattedUpdatedAt)
-                        .font(.caption.weight(.medium))
-                }
-            }
-        }
+        Text("Created \(report.formattedCreatedAt) · Updated \(report.smartUpdatedAt)")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
     }
 
     // MARK: - Loading Skeleton
