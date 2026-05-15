@@ -636,14 +636,17 @@ private struct TransactionSection: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                Text("Transactions")
+                Text(transactions.isEmpty ? "Transactions" : "Transactions (\(filtered.count))")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                if !transactions.isEmpty {
-                    Text("\(filtered.count)")
+                if !transactions.isEmpty, selectedCategory != nil {
+                    let filteredNet = filtered.reduce(0.0) { sum, t in
+                        t.type == .income ? sum + t.amount : sum - t.amount
+                    }
+                    Text("\(filteredNet >= 0 ? "+" : "")\(filteredNet.formatted(.currency(code: "EUR")))")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(filteredNet >= 0 ? AppColors.income : AppColors.expense)
                 }
                 if !isLocked {
                     Button(action: onAdd) {

@@ -17,12 +17,13 @@ private struct DonutChartCard: View {
     let slices: [ChartSlice]
 
     @State private var isExpanded = false
-    @State private var selectedValue: Double?
+    @State private var liveValue: Double?
+    @State private var committedValue: Double?
 
     private var total: Double { slices.reduce(0) { $0 + $1.amount } }
 
     private var selectedSlice: ChartSlice? {
-        guard let val = selectedValue else { return nil }
+        guard let val = committedValue else { return nil }
         var cumulative = 0.0
         for slice in slices {
             cumulative += slice.amount
@@ -37,7 +38,7 @@ private struct DonutChartCard: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         isExpanded.toggle()
-                        if !isExpanded { selectedValue = nil }
+                        if !isExpanded { committedValue = nil }
                     }
                 } label: {
                     HStack {
@@ -58,32 +59,53 @@ private struct DonutChartCard: View {
                         Chart(slices) { slice in
                             SectorMark(
                                 angle: .value("Amount", slice.amount),
-                                innerRadius: .ratio(0.5),
+                                innerRadius: .ratio(0.62),
                                 outerRadius: selectedSlice?.label == slice.label ? .ratio(0.95) : .ratio(0.88),
                                 angularInset: 1.5
                             )
                             .foregroundStyle(slice.color)
                         }
-                        .chartAngleSelection(value: $selectedValue)
+                        .chartAngleSelection(value: $liveValue)
+                        .onChange(of: liveValue) { _, newVal in
+                            if let newVal { committedValue = newVal }
+                        }
                         .frame(height: 220)
 
-                        if let sel = selectedSlice {
-                            let pct = total > 0 ? sel.amount / total * 100 : 0
-                            VStack(spacing: 2) {
-                                Text(sel.label)
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(sel.color)
-                                Text(sel.amount.formatted(.currency(code: "EUR")))
-                                    .font(.caption2.weight(.semibold).monospacedDigit())
-                                Text(String(format: "%.1f%%", pct))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                committedValue = nil
                             }
-                            .multilineTextAlignment(.center)
+                        } label: {
+                            if let sel = selectedSlice {
+                                let pct = total > 0 ? sel.amount / total * 100 : 0
+                                VStack(spacing: 3) {
+                                    Text(sel.label)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(sel.color)
+                                    Text(sel.amount.formatted(.currency(code: "EUR")))
+                                        .font(.caption.weight(.semibold).monospacedDigit())
+                                        .foregroundStyle(.primary)
+                                    Text(String(format: "%.1f%%", pct))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .transition(.opacity.animation(.easeInOut(duration: 0.15)))
+                            } else {
+                                VStack(spacing: 3) {
+                                    Text("Total")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text(total.formatted(.currency(code: "EUR")))
+                                        .font(.caption.weight(.semibold).monospacedDigit())
+                                        .foregroundStyle(.primary)
+                                }
+                                .transition(.opacity.animation(.easeInOut(duration: 0.15)))
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
 
-                    let columns = [GridItem(.flexible()), GridItem(.flexible())]
+                    let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
                         ForEach(slices) { slice in
                             HStack(spacing: 6) {
