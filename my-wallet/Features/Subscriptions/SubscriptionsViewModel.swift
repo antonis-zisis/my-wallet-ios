@@ -14,6 +14,10 @@ private let getSubscriptionsQuery = """
         startDate
         endDate
         cancelledAt
+        trialEndsAt
+        notes
+        paymentMethod
+        url
         monthlyCost
         createdAt
         updatedAt
@@ -36,6 +40,10 @@ private let createSubscriptionMutation = """
       startDate
       endDate
       cancelledAt
+      trialEndsAt
+      notes
+      paymentMethod
+      url
       monthlyCost
       createdAt
       updatedAt
@@ -54,6 +62,10 @@ private let updateSubscriptionMutation = """
       startDate
       endDate
       cancelledAt
+      trialEndsAt
+      notes
+      paymentMethod
+      url
       monthlyCost
       createdAt
       updatedAt
@@ -83,6 +95,10 @@ private let resumeSubscriptionMutation = """
       startDate
       endDate
       cancelledAt
+      trialEndsAt
+      notes
+      paymentMethod
+      url
       monthlyCost
       createdAt
       updatedAt
@@ -141,6 +157,10 @@ struct CreateSubscriptionInput: Encodable {
     let amount: Double
     let billingCycle: String
     let startDate: String
+    let trialEndsAt: String?
+    let notes: String?
+    let paymentMethod: String?
+    let url: String?
 }
 
 struct UpdateSubscriptionInput: Encodable {
@@ -149,6 +169,10 @@ struct UpdateSubscriptionInput: Encodable {
     let amount: Double
     let billingCycle: String
     let startDate: String
+    let trialEndsAt: String?
+    let notes: String?
+    let paymentMethod: String?
+    let url: String?
 }
 
 struct ResumeSubscriptionInput: Encodable {
@@ -174,11 +198,49 @@ final class SubscriptionsViewModel {
     var isMutating = false
 
     var totalMonthlyCost: Double {
-        activeSubscriptions.reduce(0) { $0 + $1.monthlyCost }
+        activeSubscriptions
+            .filter { !$0.isInTrial }
+            .reduce(0) { $0 + $1.monthlyCost }
     }
 
     var totalYearlyCost: Double {
         totalMonthlyCost * 12
+    }
+
+    var thisMonthCost: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        let thisMonth = calendar.component(.month, from: now)
+        let thisYear  = calendar.component(.year,  from: now)
+        return activeSubscriptions
+            .filter { !$0.isInTrial }
+            .reduce(0.0) { total, sub in
+                switch sub.billingCycle {
+                case .weekly, .monthly:
+                    return total + sub.monthlyCost
+                case .quarterly, .biAnnual, .yearly:
+                    let next = sub.nextRenewalDate
+                    let prev = calendar.date(byAdding: .month, value: -sub.billingCycle.monthIncrement, to: next) ?? next
+                    for date in [next, prev]
+                        where calendar.component(.month, from: date) == thisMonth
+                           && calendar.component(.year,  from: date) == thisYear {
+                        return total + sub.amount
+                    }
+                    return total
+                }
+            }
+    }
+
+    var nextRenewalSubscription: Subscription? {
+        activeSubscriptions
+            .filter { !$0.isCancelled }
+            .min(by: { $0.nextRenewalDate < $1.nextRenewalDate })
+    }
+
+    var mostExpensiveSubscription: Subscription? {
+        activeSubscriptions
+            .filter { !$0.isCancelled }
+            .max(by: { $0.monthlyCost < $1.monthlyCost })
     }
 
     private let client = GraphQLClient.shared
@@ -279,6 +341,10 @@ final class SubscriptionsViewModel {
                     startDate: old.startDate,
                     endDate: fields.endDate,
                     cancelledAt: fields.cancelledAt,
+                    trialEndsAt: old.trialEndsAt,
+                    notes: old.notes,
+                    paymentMethod: old.paymentMethod,
+                    url: old.url,
                     monthlyCost: old.monthlyCost
                 )
                 activeSubscriptions[idx] = updated
