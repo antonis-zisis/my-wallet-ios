@@ -10,13 +10,10 @@ struct ProfileView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    userHeader
                     personalInfoCard
-                    changePasswordCard
-                    if auth.canUseBiometrics {
-                        securityCard
-                    }
-                    privacyCard
-                    appearanceCard
+                    securityCard
+                    preferencesCard
                     signOutCard
                 }
                 .padding()
@@ -49,6 +46,36 @@ struct ProfileView: View {
         }
     }
 
+    // MARK: - Header
+
+    private var userHeader: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(AppColors.brand)
+                Text(initials(from: vm.fullName.isEmpty ? vm.email : vm.fullName))
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 56, height: 56)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(vm.fullName.isEmpty ? vm.email : vm.fullName)
+                    .font(.headline)
+                    .foregroundStyle(AppColors.textPrimary)
+                if !vm.fullName.isEmpty {
+                    Text(vm.email)
+                        .font(.subheadline)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 4)
+    }
+
     // MARK: - Cards
 
     private var personalInfoCard: some View {
@@ -58,7 +85,6 @@ struct ProfileView: View {
                     .font(.headline)
                     .padding(.bottom, 16)
 
-                // Email — read-only
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Email")
                         .font(.caption)
@@ -69,7 +95,6 @@ struct ProfileView: View {
 
                 Divider().padding(.vertical, 12)
 
-                // Full name
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Full name")
                         .font(.caption)
@@ -102,10 +127,10 @@ struct ProfileView: View {
         }
     }
 
-    private var changePasswordCard: some View {
+    private var securityCard: some View {
         CardContainer {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Change password")
+                Text("Security")
                     .font(.headline)
                     .padding(.bottom, 16)
 
@@ -141,35 +166,37 @@ struct ProfileView: View {
                     .font(.body.weight(.medium))
                 }
                 .disabled(vm.newPassword.isEmpty || vm.confirmPassword.isEmpty || vm.isSavingPassword)
+
+                if auth.canUseBiometrics {
+                    Divider().padding(.vertical, 12)
+
+                    @Bindable var auth = auth
+                    Toggle(isOn: $auth.biometricLockEnabled) {
+                        Label("Require Face ID", systemImage: "faceid")
+                    }
+                }
             }
         }
     }
 
-    private var securityCard: some View {
+    private var preferencesCard: some View {
         CardContainer {
-            @Bindable var auth = auth
-            Toggle(isOn: $auth.biometricLockEnabled) {
-                Label("Require Face ID", systemImage: "faceid")
-            }
-        }
-    }
-
-    private var privacyCard: some View {
-        CardContainer {
-            @Bindable var theme = theme
-            Toggle(isOn: $theme.hideAmounts) {
-                Label("Hide amounts", systemImage: "eye.slash")
-            }
-        }
-    }
-
-    private var appearanceCard: some View {
-        CardContainer {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Appearance")
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Preferences")
                     .font(.headline)
+                    .padding(.bottom, 16)
 
                 @Bindable var theme = theme
+                Toggle(isOn: $theme.hideAmounts) {
+                    Label("Hide amounts", systemImage: "eye.slash")
+                }
+
+                Divider().padding(.vertical, 12)
+
+                Text("Appearance")
+                    .font(.subheadline.weight(.medium))
+                    .padding(.bottom, 10)
+
                 HStack {
                     ForEach(AppTheme.allCases) { appTheme in
                         ThemeOption(
@@ -197,6 +224,14 @@ struct ProfileView: View {
                 .font(.body.weight(.medium))
             }
         }
+    }
+
+    // MARK: - Helpers
+
+    private func initials(from name: String) -> String {
+        let parts = name.split(separator: " ").prefix(2)
+        if parts.isEmpty { return "?" }
+        return parts.compactMap { $0.first.map { String($0).uppercased() } }.joined()
     }
 }
 
