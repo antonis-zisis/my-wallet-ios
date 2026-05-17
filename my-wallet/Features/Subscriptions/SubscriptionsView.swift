@@ -10,9 +10,9 @@ private struct BillingBadge: View {
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(billingCycle == .monthly ? AppColors.income.opacity(0.15) : AppColors.brand.opacity(0.15))
-            .foregroundStyle(billingCycle == .monthly ? AppColors.income : AppColors.brand)
-            .clipShape(Capsule())
+            .background(.secondary.opacity(0.12))
+            .foregroundStyle(.secondary)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 }
 
@@ -24,7 +24,7 @@ private struct CancelledBadge: View {
             .padding(.vertical, 2)
             .background(AppColors.expense.opacity(0.15))
             .foregroundStyle(AppColors.expense)
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 }
 
@@ -32,18 +32,6 @@ private struct CancelledBadge: View {
 
 private struct SubscriptionRow: View {
     let subscription: Subscription
-
-    var amountText: String {
-        String(format: "€%.2f", subscription.amount)
-    }
-
-    var equivalentText: String {
-        if subscription.billingCycle == .yearly {
-            return String(format: "€%.2f/mo", subscription.monthlyCost)
-        } else {
-            return String(format: "€%.2f/yr", subscription.amount * 12)
-        }
-    }
 
     var body: some View {
         HStack(alignment: .center) {
@@ -60,6 +48,16 @@ private struct SubscriptionRow: View {
                     }
                 }
 
+                HStack(spacing: 6) {
+                    Text(String(format: "€%.2f", subscription.amount))
+                    Text("·")
+                    Text(subscription.billingCycle == .yearly
+                         ? String(format: "€%.2f/mo", subscription.monthlyCost)
+                         : String(format: "€%.2f/yr", subscription.amount * 12))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
                 if subscription.isActive {
                     Group {
                         if subscription.isCancelled, let endDate = subscription.formattedEndDate {
@@ -74,17 +72,32 @@ private struct SubscriptionRow: View {
             }
 
             Spacer()
-
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(amountText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                Text(equivalentText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
         .padding(.vertical, 10)
+    }
+}
+
+// MARK: - Info popover
+
+private struct InfoPopover: View {
+    let message: String
+    @State private var isShowing = false
+
+    var body: some View {
+        Button {
+            isShowing.toggle()
+        } label: {
+            Image(systemName: "info.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isShowing) {
+            Text(message)
+                .font(.subheadline)
+                .padding(12)
+                .presentationCompactAdaptation(.popover)
+        }
     }
 }
 
@@ -93,25 +106,110 @@ private struct SubscriptionRow: View {
 private struct CostSummaryCards: View {
     let monthlyCost: Double
     let yearlyCost: Double
+    let thisMonthCost: Double
+
+    private var currentMonthName: String {
+        Date().formatted(.dateTime.month(.wide))
+    }
 
     var body: some View {
-        HStack(spacing: 12) {
-            CardContainer {
+        HStack(spacing: 8) {
+            CardContainer(verticalPadding: 10, expandHeight: true) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Monthly cost")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text(String(format: "€%.2f", monthlyCost))
                         .font(.title2.bold())
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
                 }
             }
-            CardContainer {
+            CardContainer(verticalPadding: 10, expandHeight: true) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Yearly cost")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text(String(format: "€%.2f", yearlyCost))
                         .font(.title2.bold())
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                }
+            }
+            CardContainer(verticalPadding: 10, expandHeight: true) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text("This month")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        InfoPopover(message: "Total charged in \(currentMonthName)")
+                    }
+                    Text(String(format: "€%.2f", thisMonthCost))
+                        .font(.title2.bold())
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: - Insight cards
+
+private struct InsightCards: View {
+    let nextRenewal: Subscription?
+    let mostExpensive: Subscription?
+
+    var body: some View {
+        VStack(spacing: 8) {
+            CardContainer(verticalPadding: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    if let sub = nextRenewal {
+                        Text("Next renewal · \(sub.nextRenewalDate.formatted(Date.FormatStyle().month(.wide).day().year()))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        HStack(spacing: 4) {
+                            Text(sub.name)
+                                .font(.body.weight(.semibold))
+                                .lineLimit(1)
+                            Text("·")
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                            Text(String(format: "€%.2f", sub.amount))
+                                .font(.body.weight(.semibold))
+                                .lineLimit(1)
+                        }
+                        .minimumScaleFactor(0.8)
+                    } else {
+                        Text("Next renewal")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("–")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+            }
+
+            CardContainer(verticalPadding: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    if let sub = mostExpensive {
+                        HStack(alignment: .top, spacing: 4) {
+                            Text("Most expensive · \(String(format: "€%.2f", sub.monthlyCost))/mo")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            InfoPopover(message: "Yearly cost: \(String(format: "€%.2f", sub.monthlyCost * 12))")
+                        }
+                        Text(sub.name)
+                            .font(.body.weight(.semibold))
+                            .lineLimit(1)
+                    } else {
+                        Text("Most expensive")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("–")
+                            .font(.subheadline.weight(.semibold))
+                    }
                 }
             }
         }
@@ -328,10 +426,17 @@ struct SubscriptionsView: View {
             ScrollView {
                 LazyVStack(spacing: 16) {
                     if !viewModel.activeSubscriptions.isEmpty {
-                        CostSummaryCards(
-                            monthlyCost: viewModel.totalMonthlyCost,
-                            yearlyCost: viewModel.totalYearlyCost
-                        )
+                        VStack(spacing: 8) {
+                            CostSummaryCards(
+                                monthlyCost: viewModel.totalMonthlyCost,
+                                yearlyCost: viewModel.totalYearlyCost,
+                                thisMonthCost: viewModel.thisMonthCost
+                            )
+                            InsightCards(
+                                nextRenewal: viewModel.nextRenewalSubscription,
+                                mostExpensive: viewModel.mostExpensiveSubscription
+                            )
+                        }
                     }
 
                     activeSection
@@ -434,7 +539,12 @@ struct SubscriptionsView: View {
         } else if viewModel.activeSubscriptions.isEmpty {
             emptyActiveState
         } else {
-            CardContainer {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Active (\(viewModel.activeSubscriptions.count))")
+                    .padding(.top, 8)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                CardContainer(verticalPadding: 6) {
                 VStack(spacing: 0) {
                     ForEach(Array(viewModel.activeSubscriptions.enumerated()), id: \.element.id) { index, sub in
                         HStack(spacing: 0) {
@@ -462,6 +572,7 @@ struct SubscriptionsView: View {
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -492,7 +603,7 @@ struct SubscriptionsView: View {
                             .font(.subheadline)
                             .foregroundStyle(.red)
                     } else {
-                        CardContainer {
+                        CardContainer(verticalPadding: 6) {
                             VStack(spacing: 0) {
                                 ForEach(Array(viewModel.inactiveSubscriptions.enumerated()), id: \.element.id) { index, sub in
                                     HStack(spacing: 0) {
@@ -524,27 +635,56 @@ struct SubscriptionsView: View {
     // MARK: Loading placeholder
 
     private var loadingList: some View {
-        CardContainer {
-            VStack(spacing: 0) {
-                ForEach(0..<4, id: \.self) { index in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 6) {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(0..<3, id: \.self) { _ in
+                    CardContainer(verticalPadding: 10, expandHeight: true) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Monthly cost")
+                                .font(.caption)
+                                .redacted(reason: .placeholder)
+                            Text("€000.00")
+                                .font(.title2.bold())
+                                .redacted(reason: .placeholder)
+                        }
+                    }
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(0..<2, id: \.self) { _ in
+                CardContainer(verticalPadding: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Next renewal · May 20, 2026")
+                            .font(.caption)
+                            .redacted(reason: .placeholder)
+                        Text("Subscription name  €00.00")
+                            .font(.body.weight(.semibold))
+                            .redacted(reason: .placeholder)
+                    }
+                }
+            }
+
+            CardContainer(verticalPadding: 6) {
+                VStack(spacing: 0) {
+                    ForEach(0..<5, id: \.self) { index in
+                        VStack(alignment: .leading, spacing: 4) {
                             Text("Subscription name")
                                 .font(.subheadline)
+                                .redacted(reason: .placeholder)
+                            Text("€9.99 · €119.88/yr")
+                                .font(.caption)
                                 .redacted(reason: .placeholder)
                             Text("next renewal at Jan 1, 2025")
                                 .font(.caption)
                                 .redacted(reason: .placeholder)
                         }
-                        Spacer()
-                        Text("€99.99")
-                            .font(.subheadline)
-                            .redacted(reason: .placeholder)
+                        .padding(.vertical, 10)
+                        if index < 4 { Divider() }
                     }
-                    .padding(.vertical, 10)
-                    if index < 3 { Divider() }
                 }
             }
+            .padding(.top, 16)
         }
     }
 

@@ -181,6 +181,37 @@ final class SubscriptionsViewModel {
         totalMonthlyCost * 12
     }
 
+    var thisMonthCost: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        let thisMonth = calendar.component(.month, from: now)
+        let thisYear = calendar.component(.year, from: now)
+        return activeSubscriptions.reduce(0.0) { total, sub in
+            if sub.billingCycle == .monthly {
+                return total + sub.amount
+            }
+            let next = sub.nextRenewalDate
+            let prev = calendar.date(byAdding: .month, value: -12, to: next) ?? next
+            for date in [next, prev] where calendar.component(.month, from: date) == thisMonth
+                                       && calendar.component(.year, from: date) == thisYear {
+                return total + sub.amount
+            }
+            return total
+        }
+    }
+
+    var nextRenewalSubscription: Subscription? {
+        activeSubscriptions
+            .filter { !$0.isCancelled }
+            .min(by: { $0.nextRenewalDate < $1.nextRenewalDate })
+    }
+
+    var mostExpensiveSubscription: Subscription? {
+        activeSubscriptions
+            .filter { !$0.isCancelled }
+            .max(by: { $0.monthlyCost < $1.monthlyCost })
+    }
+
     private let client = GraphQLClient.shared
 
     func loadActive(token: String) async {
