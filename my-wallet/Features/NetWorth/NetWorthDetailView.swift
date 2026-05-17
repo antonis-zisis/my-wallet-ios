@@ -173,20 +173,28 @@ struct NetWorthDetailView: View {
             VStack(spacing: 0) {
                 ForEach(0..<4, id: \.self) { index in
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text("Entry label placeholder")
-                                .font(.subheadline)
+                                .font(.subheadline.weight(.medium))
                                 .redacted(reason: .placeholder)
                             Text("Category")
                                 .font(.caption)
                                 .redacted(reason: .placeholder)
                         }
                         Spacer()
-                        Text("€0,000.00")
-                            .font(.subheadline)
-                            .redacted(reason: .placeholder)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text("00.0%")
+                                    .font(.caption2)
+                                    .redacted(reason: .placeholder)
+                                Text("€0,000.00")
+                                    .font(.subheadline.weight(.semibold))
+                                    .monospacedDigit()
+                                    .redacted(reason: .placeholder)
+                            }
+                        }
                     }
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 8)
                     if index < 3 { Divider() }
                 }
             }

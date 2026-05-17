@@ -114,58 +114,40 @@ struct NetWorthSnapshotSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Title") {
-                    TextField("e.g. February 2026", text: $title)
-                        .autocorrectionDisabled()
-                }
+            ScrollView {
+                VStack(spacing: 16) {
+                    fieldGroup(label: "Title") {
+                        TextField("e.g. February 2026", text: $title)
+                            .autocorrectionDisabled()
+                            .styledInput()
+                    }
 
-                Section("Date") {
-                    DatePicker("Snapshot Date", selection: $snapshotDate, displayedComponents: .date)
-                        .labelsHidden()
-                }
+                    fieldGroup(label: "Snapshot Date") {
+                        DatePicker("", selection: $snapshotDate, displayedComponents: .date)
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .styledInput()
+                    }
 
-                ForEach($entries) { $entry in
-                    entrySection(entry: $entry)
-                }
+                    ForEach($entries) { $entry in
+                        entryCard(entry: $entry)
+                    }
 
-                Section {
-                    Button("+ Add Asset") {
-                        entries.append(NetWorthEntryDraft())
+                    HStack(spacing: 8) {
+                        addEntryButton(label: "Add Asset", color: AppColors.income) {
+                            entries.append(NetWorthEntryDraft())
+                        }
+                        addEntryButton(label: "Add Liability", color: AppColors.expense) {
+                            entries.append(NetWorthEntryDraft(type: "LIABILITY"))
+                        }
                     }
-                    Button("+ Add Liability") {
-                        entries.append(NetWorthEntryDraft(type: "LIABILITY"))
-                    }
-                }
 
-                Section("Summary") {
-                    HStack {
-                        Label("Assets", systemImage: "arrow.up")
-                            .foregroundStyle(AppColors.income)
-                        Spacer()
-                        Text(totalAssets.formatted(.currency(code: "EUR")))
-                            .foregroundStyle(AppColors.income)
-                            .monospacedDigit()
-                    }
-                    HStack {
-                        Label("Liabilities", systemImage: "arrow.down")
-                            .foregroundStyle(AppColors.expense)
-                        Spacer()
-                        Text(totalLiabilities.formatted(.currency(code: "EUR")))
-                            .foregroundStyle(AppColors.expense)
-                            .monospacedDigit()
-                    }
-                    HStack {
-                        Text("Net Worth")
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Text(netWorth.formatted(.currency(code: "EUR")))
-                            .fontWeight(.semibold)
-                            .foregroundStyle(netWorth >= 0 ? AppColors.income : AppColors.expense)
-                            .monospacedDigit()
-                    }
+                    summaryCard
                 }
+                .padding()
             }
+            .background(AppColors.bgApp)
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -181,30 +163,12 @@ struct NetWorthSnapshotSheet: View {
     }
 
     @ViewBuilder
-    private func entrySection(entry: Binding<NetWorthEntryDraft>) -> some View {
+    private func entryCard(entry: Binding<NetWorthEntryDraft>) -> some View {
         let categories = entry.type.wrappedValue == "ASSET" ? assetCategories : liabilityCategories
-        Section {
-            Picker("Type", selection: entry.type) {
-                Text("Asset").tag("ASSET")
-                Text("Liability").tag("LIABILITY")
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: entry.type.wrappedValue) { _, newType in
-                entry.category.wrappedValue = newType == "ASSET" ? assetCategories[0] : liabilityCategories[0]
-            }
-
-            Picker("Category", selection: entry.category) {
-                ForEach(categories, id: \.self) { Text($0).tag($0) }
-            }
-
-            TextField("Label", text: entry.label)
-                .autocorrectionDisabled()
-
-            TextField("Amount", text: entry.amount)
-                .keyboardType(.decimalPad)
-        } header: {
+        VStack(spacing: 0) {
             HStack {
                 Text(entry.type.wrappedValue == "ASSET" ? "Asset" : "Liability")
+                    .font(.subheadline.weight(.semibold))
                 Spacer()
                 if entries.count > 1 {
                     Button(role: .destructive) {
@@ -212,11 +176,134 @@ struct NetWorthSnapshotSheet: View {
                     } label: {
                         Image(systemName: "trash")
                             .font(.caption)
+                            .foregroundStyle(AppColors.expense)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(.red)
                 }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            HStack {
+                Text("Category")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Picker("", selection: entry.category) {
+                    ForEach(categories, id: \.self) { Text($0).tag($0) }
+                }
+                .labelsHidden()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            HStack {
+                Text("Label")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                TextField("e.g. Emergency Fund", text: entry.label)
+                    .autocorrectionDisabled()
+                    .multilineTextAlignment(.trailing)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            HStack {
+                Text("Amount")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                TextField("0.00", text: entry.amount)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+        }
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+    }
+
+    private func addEntryButton(label: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: "plus")
+                Text(label)
+            }
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(color.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(color.opacity(0.3), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var summaryCard: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Label("Assets", systemImage: "arrow.up")
+                    .foregroundStyle(AppColors.income)
+                Spacer()
+                Text(totalAssets.formatted(.currency(code: "EUR")))
+                    .foregroundStyle(AppColors.income)
+                    .monospacedDigit()
+            }
+            .font(.subheadline)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            HStack {
+                Label("Liabilities", systemImage: "arrow.down")
+                    .foregroundStyle(AppColors.expense)
+                Spacer()
+                Text(totalLiabilities.formatted(.currency(code: "EUR")))
+                    .foregroundStyle(AppColors.expense)
+                    .monospacedDigit()
+            }
+            .font(.subheadline)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            HStack {
+                Text("Net Worth")
+                    .fontWeight(.semibold)
+                Spacer()
+                Text(netWorth.formatted(.currency(code: "EUR")))
+                    .fontWeight(.semibold)
+                    .foregroundStyle(netWorth >= 0 ? AppColors.income : AppColors.expense)
+                    .monospacedDigit()
+            }
+            .font(.subheadline)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+        }
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+    }
+
+    @ViewBuilder
+    private func fieldGroup<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+            content()
         }
     }
 
@@ -247,6 +334,19 @@ struct NetWorthSnapshotSheet: View {
     }
 }
 
+// MARK: - Styled input
+
+private extension View {
+    func styledInput() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(AppColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+    }
+}
+
 // MARK: - Chart mode
 
 private enum NetWorthChartMode: String, CaseIterable {
@@ -259,8 +359,9 @@ private enum NetWorthChartMode: String, CaseIterable {
 private struct TrendChartCard: View {
     let snapshots: [NetWorthSnapshot]
 
-    @State private var collapsed = false
+    @State private var collapsed = true
     @State private var mode: NetWorthChartMode = .netWorth
+    @State private var showInfo = false
     @Environment(ThemeManager.self) private var theme
 
     private var chartData: [NetWorthSnapshot] {
@@ -270,64 +371,103 @@ private struct TrendChartCard: View {
     var body: some View {
         CardContainer {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Trend")
-                        .font(.headline)
-                    Spacer()
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) { collapsed.toggle() }
-                    } label: {
-                        Image(systemName: collapsed ? "chevron.down" : "chevron.up")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if !collapsed {
-                    Picker("", selection: $mode) {
-                        ForEach(NetWorthChartMode.allCases, id: \.self) {
-                            Text($0.rawValue).tag($0)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { collapsed.toggle() }
+                } label: {
+                    HStack {
+                        Text("Net Worth Over Time")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        HStack(spacing: 8) {
+                            Button {
+                                showInfo.toggle()
+                            } label: {
+                                Image(systemName: "info.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .popover(isPresented: $showInfo) {
+                                Text("Showing the \(chartData.count) most recent snapshots, from oldest to newest.")
+                                    .font(.subheadline)
+                                    .padding(12)
+                                    .presentationCompactAdaptation(.popover)
+                            }
+                            Image(systemName: collapsed ? "chevron.down" : "chevron.up")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if !collapsed {
+                    HStack(spacing: 0) {
+                        ForEach(NetWorthChartMode.allCases, id: \.self) { option in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) { mode = option }
+                            } label: {
+                                Text(option.rawValue)
+                                    .font(.caption.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 7)
+                                    .background(
+                                        mode == option ? AppColors.surface : Color.clear,
+                                        in: RoundedRectangle(cornerRadius: 3)
+                                    )
+                                    .foregroundStyle(mode == option ? AppColors.textPrimary : AppColors.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(3)
+                    .background(AppColors.surfaceMuted, in: RoundedRectangle(cornerRadius: 4))
+                    .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+                    .padding(.top, 14)
+                    .padding(.bottom, 30)
 
                     Chart {
                         if mode == .netWorth {
+                            ForEach(chartData) { snapshot in
+                                AreaMark(
+                                    x: .value("Date", snapshot.parsedSnapshotDate),
+                                    y: .value("Net Worth", snapshot.netWorth)
+                                )
+                                .interpolationMethod(.linear)
+                                .foregroundStyle(AppColors.brand.opacity(0.12))
+                            }
                             ForEach(chartData) { snapshot in
                                 LineMark(
                                     x: .value("Date", snapshot.parsedSnapshotDate),
                                     y: .value("Net Worth", snapshot.netWorth)
                                 )
-                                .interpolationMethod(.catmullRom)
+                                .interpolationMethod(.linear)
                                 .foregroundStyle(AppColors.brand)
-
-                                AreaMark(
-                                    x: .value("Date", snapshot.parsedSnapshotDate),
-                                    y: .value("Net Worth", snapshot.netWorth)
-                                )
-                                .interpolationMethod(.catmullRom)
-                                .foregroundStyle(AppColors.brand.opacity(0.12))
                             }
                         } else {
                             ForEach(chartData) { snapshot in
                                 LineMark(
                                     x: .value("Date", snapshot.parsedSnapshotDate),
-                                    y: .value("Assets", snapshot.totalAssets),
+                                    y: .value("Value", snapshot.totalAssets),
                                     series: .value("Type", "Assets")
                                 )
-                                .interpolationMethod(.catmullRom)
+                                .interpolationMethod(.linear)
                                 .foregroundStyle(AppColors.income)
-
+                            }
+                            ForEach(chartData) { snapshot in
                                 LineMark(
                                     x: .value("Date", snapshot.parsedSnapshotDate),
-                                    y: .value("Liabilities", snapshot.totalLiabilities),
+                                    y: .value("Value", snapshot.totalLiabilities),
                                     series: .value("Type", "Liabilities")
                                 )
-                                .interpolationMethod(.catmullRom)
+                                .interpolationMethod(.linear)
                                 .foregroundStyle(AppColors.expense)
                             }
                         }
                     }
+                    .chartLegend(.hidden)
                     .chartXAxis {
                         AxisMarks(values: .automatic(desiredCount: 4)) {
                             AxisGridLine()
@@ -536,19 +676,31 @@ struct NetWorthView: View {
         CardContainer {
             VStack(spacing: 0) {
                 ForEach(0..<5, id: \.self) { index in
-                    HStack {
-                        Text("Snapshot title placeholder")
-                            .font(.subheadline)
-                            .redacted(reason: .placeholder)
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("+€0,000.00")
-                                .font(.subheadline)
+                    HStack(spacing: 0) {
+                        HStack {
+                            Text("Snapshot title placeholder")
+                                .font(.subheadline.weight(.medium))
                                 .redacted(reason: .placeholder)
-                            Text("Jan 1, 2025")
-                                .font(.caption)
-                                .redacted(reason: .placeholder)
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("+€0,000.00")
+                                    .font(.subheadline.weight(.semibold))
+                                    .monospacedDigit()
+                                    .redacted(reason: .placeholder)
+                                HStack(spacing: 6) {
+                                    Text("↑ 0.0%")
+                                        .font(.caption2.weight(.medium))
+                                        .redacted(reason: .placeholder)
+                                    Text("Jan 1, 2025")
+                                        .font(.caption)
+                                        .redacted(reason: .placeholder)
+                                }
+                            }
                         }
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppColors.textTertiary.opacity(0.4))
+                            .padding(.leading, 8)
                     }
                     .padding(.vertical, 12)
                     if index < 4 { Divider() }
