@@ -222,7 +222,7 @@ private struct SubscriptionsSection: View {
             }
             HStack(spacing: 12) {
                 ForEach(0..<3, id: \.self) { _ in
-                    CardContainer {
+                    CardContainer(expandHeight: true) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Loading label")
                                 .font(.caption)
@@ -620,7 +620,7 @@ private struct StatCard: View {
     @State private var showInfo = false
 
     var body: some View {
-        CardContainer {
+        CardContainer(expandHeight: true) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 3) {
                     Text(label)
