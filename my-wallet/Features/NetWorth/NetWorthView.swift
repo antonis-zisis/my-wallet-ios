@@ -165,6 +165,8 @@ private struct CreateNetWorthSnapshotSheet: View {
 private struct SnapshotRow: View {
     let snapshot: NetWorthSnapshot
 
+    @Environment(ThemeManager.self) private var theme
+
     private var netWorthColor: Color { snapshot.netWorth >= 0 ? AppColors.income : AppColors.expense }
     private var sign: String { snapshot.netWorth >= 0 ? "+" : "" }
 
@@ -175,7 +177,7 @@ private struct SnapshotRow: View {
                 .foregroundStyle(.primary)
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(sign)\(snapshot.netWorth.formatted(.currency(code: "EUR")))")
+                Text("\(sign)\(snapshot.netWorth.maskedCurrency(hidden: theme.hideAmounts))")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(netWorthColor)
                     .monospacedDigit()

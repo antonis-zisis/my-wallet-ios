@@ -5,6 +5,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(AuthViewModel.self) private var auth
+    @Environment(ThemeManager.self) private var theme
     @State private var viewModel = DashboardViewModel()
 
     var body: some View {
@@ -19,6 +20,15 @@ struct DashboardView: View {
             }
             .background(AppColors.bgApp)
             .navigationTitle("Overview")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        theme.hideAmounts.toggle()
+                    } label: {
+                        Image(systemName: theme.hideAmounts ? "eye.slash" : "eye")
+                    }
+                }
+            }
             .task {
                 guard let token = auth.token else { return }
                 await viewModel.loadData(token: token)
@@ -302,6 +312,7 @@ private struct NetWorthCard: View {
     let previousSnapshot: NetWorthSnapshot?
     let recentSnapshots: [NetWorthSnapshot]
     @State private var isExpanded = false
+    @Environment(ThemeManager.self) private var theme
 
     private var netWorthColor: Color { snapshot.netWorth >= 0 ? AppColors.income : AppColors.expense }
 
@@ -358,7 +369,7 @@ private struct NetWorthCard: View {
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(snapshot.netWorth, format: .currency(code: "EUR"))
+                            Text(snapshot.netWorth.maskedCurrency(hidden: theme.hideAmounts))
                                 .font(.title.bold())
                                 .foregroundStyle(netWorthColor)
 
@@ -368,7 +379,7 @@ private struct NetWorthCard: View {
                                     Image(systemName: deltaPositive ? "arrow.up" : "arrow.down")
                                         .font(.caption.weight(.semibold))
                                     Text(
-                                        "\(deltaPositive ? "+" : "-")\(abs(delta).formatted(.currency(code: "EUR"))) since \(previousSnapshot!.title)"
+                                        "\(deltaPositive ? "+" : "-")\(abs(delta).maskedCurrency(hidden: theme.hideAmounts)) since \(previousSnapshot!.title)"
                                     )
                                     .font(.caption.weight(.medium))
                                 }
@@ -425,6 +436,7 @@ private struct NetWorthSparkline: View {
 private struct IncomeExpensesCard: View {
     let summaries: [ReportSummaryItem]
 
+    @Environment(ThemeManager.self) private var theme
     @State private var isExpanded = false
 
     private struct BarEntry: Identifiable {
@@ -508,7 +520,7 @@ private struct IncomeExpensesCard: View {
                         AxisMarks { value in
                             AxisValueLabel {
                                 if let amount = value.as(Double.self) {
-                                    Text(amount, format: .currency(code: "EUR").presentation(.narrow))
+                                    Text(theme.hideAmounts ? "***" : amount.formatted(.currency(code: "EUR").presentation(.narrow)))
                                         .font(.caption2)
                                 }
                             }
@@ -574,6 +586,8 @@ private struct SubscriptionSummaryCards: View {
     let subscriptions: [Subscription]
     let currentIncome: Double
 
+    @Environment(ThemeManager.self) private var theme
+
     private var totalMonthlyCost: Double {
         subscriptions.reduce(0) { $0 + $1.monthlyCost }
     }
@@ -590,8 +604,8 @@ private struct SubscriptionSummaryCards: View {
         VStack(spacing: 12) {
             TotalReportsCard(count: subscriptions.count)
             HStack(spacing: 12) {
-                StatCard(label: "Monthly Cost", value: totalMonthlyCost.formatted(.currency(code: "EUR")))
-                StatCard(label: "Yearly Cost", value: totalYearlyCost.formatted(.currency(code: "EUR")))
+                StatCard(label: "Monthly Cost", value: totalMonthlyCost.maskedCurrency(hidden: theme.hideAmounts))
+                StatCard(label: "Yearly Cost", value: totalYearlyCost.maskedCurrency(hidden: theme.hideAmounts))
                 StatCard(label: "% of Income", value: percentOfIncome, info: "Based on the income of your latest report.")
             }
         }
@@ -719,6 +733,8 @@ private struct UpcomingRenewalsCard: View {
 private struct RenewalRow: View {
     let subscription: Subscription
 
+    @Environment(ThemeManager.self) private var theme
+
     private var daysUntil: Int {
         let today = Calendar.current.startOfDay(for: Date())
         let target = Calendar.current.startOfDay(for: subscription.nextRenewalDate)
@@ -767,7 +783,7 @@ private struct RenewalRow: View {
                 }
             }
             Spacer()
-            Text(subscription.amount.formatted(.currency(code: "EUR")))
+            Text(subscription.amount.maskedCurrency(hidden: theme.hideAmounts))
                 .font(.subheadline.weight(.semibold))
         }
         .padding(.vertical, 6)
@@ -797,6 +813,8 @@ private struct AmountRow: View {
     let amount: Double
     let color: Color
 
+    @Environment(ThemeManager.self) private var theme
+
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
@@ -809,7 +827,7 @@ private struct AmountRow: View {
 
             Spacer()
 
-            Text(amount.formatted(.currency(code: "EUR")))
+            Text(amount.maskedCurrency(hidden: theme.hideAmounts))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(color)
         }

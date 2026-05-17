@@ -112,6 +112,8 @@ private struct NetWorthDetailStatColumn: View {
     let amount: Double
     let color: Color
 
+    @Environment(ThemeManager.self) private var theme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
@@ -119,7 +121,7 @@ private struct NetWorthDetailStatColumn: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-            Text(amount.formatted(.currency(code: "EUR")))
+            Text(amount.maskedCurrency(hidden: theme.hideAmounts))
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(color)
                 .lineLimit(1)
@@ -137,6 +139,8 @@ private struct EntriesSection: View {
     let totalColor: Color
     let total: Double
 
+    @Environment(ThemeManager.self) private var theme
+
     var body: some View {
         CardContainer {
             VStack(alignment: .leading, spacing: 0) {
@@ -144,7 +148,7 @@ private struct EntriesSection: View {
                     Text(title)
                         .font(.headline)
                     Spacer()
-                    Text(total.formatted(.currency(code: "EUR")))
+                    Text(total.maskedCurrency(hidden: theme.hideAmounts))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(totalColor)
                         .monospacedDigit()
@@ -162,7 +166,7 @@ private struct EntriesSection: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Text(entry.amount.formatted(.currency(code: "EUR")))
+                        Text(entry.amount.maskedCurrency(hidden: theme.hideAmounts))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(totalColor)
                             .monospacedDigit()
