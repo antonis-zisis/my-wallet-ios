@@ -182,6 +182,8 @@ struct ReportsView: View {
 private struct ReportRow: View {
     let report: Report
 
+    @Environment(ThemeManager.self) private var theme
+
     private var subtitle: String {
         var parts: [String] = []
         if let count = report.transactionCount {
@@ -204,7 +206,7 @@ private struct ReportRow: View {
             Spacer()
             if let balance = report.netBalance {
                 let positive = balance >= 0
-                Text("\(positive ? "+" : "")\(balance.formatted(.currency(code: "EUR")))")
+                Text("\(positive ? "+" : "")\(balance.maskedCurrency(hidden: theme.hideAmounts))")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(positive ? AppColors.income : AppColors.expense)
             }

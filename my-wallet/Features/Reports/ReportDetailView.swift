@@ -594,6 +594,8 @@ private struct TransactionFormSheet: View {
 private struct SummaryCards: View {
     let report: Report
 
+    @Environment(ThemeManager.self) private var theme
+
     private var netBalance: Double { report.totalIncome - report.totalExpenses }
     private var netColor: Color { netBalance >= 0 ? AppColors.income : AppColors.expense }
 
@@ -601,17 +603,17 @@ private struct SummaryCards: View {
         HStack(spacing: 12) {
             SummaryStatCard(
                 label: "Income",
-                value: report.totalIncome.formatted(.currency(code: "EUR")),
+                value: report.totalIncome.maskedCurrency(hidden: theme.hideAmounts),
                 color: AppColors.income
             )
             SummaryStatCard(
                 label: "Expenses",
-                value: report.totalExpenses.formatted(.currency(code: "EUR")),
+                value: report.totalExpenses.maskedCurrency(hidden: theme.hideAmounts),
                 color: AppColors.expense
             )
             SummaryStatCard(
                 label: "Net",
-                value: netBalance.formatted(.currency(code: "EUR")),
+                value: netBalance.maskedCurrency(hidden: theme.hideAmounts),
                 color: netColor
             )
         }
@@ -694,6 +696,7 @@ private struct TransactionSection: View {
     let onEdit: (Transaction) -> Void
     let onDeleteRequest: (Transaction) -> Void
 
+    @Environment(ThemeManager.self) private var theme
     @State private var selectedCategory: String? = nil
 
     private var categories: [String] {
@@ -720,7 +723,7 @@ private struct TransactionSection: View {
                     let filteredNet = filtered.reduce(0.0) { sum, t in
                         t.type == .income ? sum + t.amount : sum - t.amount
                     }
-                    Text("\(filteredNet >= 0 ? "+" : "")\(filteredNet.formatted(.currency(code: "EUR")))")
+                    Text("\(filteredNet >= 0 ? "+" : "")\(filteredNet.maskedCurrency(hidden: theme.hideAmounts))")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(filteredNet >= 0 ? AppColors.income : AppColors.expense)
                 }
@@ -778,6 +781,8 @@ private struct TransactionRow: View {
     let onEdit: () -> Void
     let onDeleteRequest: () -> Void
 
+    @Environment(ThemeManager.self) private var theme
+
     private var amountColor: Color { transaction.type == .income ? AppColors.income : AppColors.expense }
     private var amountSign: String { transaction.type == .income ? "+" : "-" }
 
@@ -800,7 +805,7 @@ private struct TransactionRow: View {
                 }
             }
             Spacer()
-            Text("\(amountSign)\(transaction.amount.formatted(.currency(code: "EUR")))")
+            Text("\(amountSign)\(transaction.amount.maskedCurrency(hidden: theme.hideAmounts))")
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(amountColor)
             if !isLocked {

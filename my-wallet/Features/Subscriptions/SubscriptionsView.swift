@@ -45,7 +45,12 @@ private struct TrialBadge: View {
 private struct SubscriptionRow: View {
     let subscription: Subscription
 
+    @Environment(ThemeManager.self) private var theme
+
     private var equivalentText: String {
+        guard !theme.hideAmounts else {
+            return subscription.billingCycle == .monthly ? "***/yr" : "***/mo"
+        }
         if subscription.billingCycle == .monthly {
             return String(format: "€%.2f/yr", subscription.amount * 12)
         }
@@ -65,7 +70,7 @@ private struct SubscriptionRow: View {
                 }
 
                 HStack(spacing: 6) {
-                    Text(String(format: "€%.2f", subscription.amount))
+                    Text(subscription.amount.maskedCurrency(hidden: theme.hideAmounts))
                     Text("·")
                     Text(equivalentText)
                 }
@@ -139,6 +144,8 @@ private struct CostSummaryCards: View {
     let yearlyCost: Double
     let thisMonthCost: Double
 
+    @Environment(ThemeManager.self) private var theme
+
     private var currentMonthName: String {
         Date().formatted(.dateTime.month(.wide))
     }
@@ -150,7 +157,7 @@ private struct CostSummaryCards: View {
                     Text("Monthly cost")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(String(format: "€%.2f", monthlyCost))
+                    Text(monthlyCost.maskedCurrency(hidden: theme.hideAmounts))
                         .font(.title2.bold())
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
@@ -161,7 +168,7 @@ private struct CostSummaryCards: View {
                     Text("Yearly cost")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(String(format: "€%.2f", yearlyCost))
+                    Text(yearlyCost.maskedCurrency(hidden: theme.hideAmounts))
                         .font(.title2.bold())
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
@@ -175,7 +182,7 @@ private struct CostSummaryCards: View {
                             .foregroundStyle(.secondary)
                         InfoPopover(message: "Total charged in \(currentMonthName)")
                     }
-                    Text(String(format: "€%.2f", thisMonthCost))
+                    Text(thisMonthCost.maskedCurrency(hidden: theme.hideAmounts))
                         .font(.title2.bold())
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
@@ -192,6 +199,8 @@ private struct InsightCards: View {
     let nextRenewal: Subscription?
     let mostExpensive: Subscription?
 
+    @Environment(ThemeManager.self) private var theme
+
     var body: some View {
         VStack(spacing: 8) {
             CardContainer(verticalPadding: 12) {
@@ -207,7 +216,7 @@ private struct InsightCards: View {
                             Text("·")
                                 .font(.body)
                                 .foregroundStyle(.secondary)
-                            Text(String(format: "€%.2f", sub.amount))
+                            Text(sub.amount.maskedCurrency(hidden: theme.hideAmounts))
                                 .font(.body.weight(.semibold))
                                 .lineLimit(1)
                         }
@@ -226,10 +235,10 @@ private struct InsightCards: View {
                 VStack(alignment: .leading, spacing: 4) {
                     if let sub = mostExpensive {
                         HStack(alignment: .top, spacing: 4) {
-                            Text("Most expensive · \(String(format: "€%.2f", sub.monthlyCost))/mo")
+                            Text("Most expensive · \(sub.monthlyCost.maskedCurrency(hidden: theme.hideAmounts))/mo")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            InfoPopover(message: "Yearly cost: \(String(format: "€%.2f", sub.monthlyCost * 12))")
+                            InfoPopover(message: "Yearly cost: \((sub.monthlyCost * 12).maskedCurrency(hidden: theme.hideAmounts))")
                         }
                         Text(sub.name)
                             .font(.body.weight(.semibold))

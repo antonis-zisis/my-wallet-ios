@@ -27,16 +27,22 @@ enum AppTheme: String, CaseIterable, Identifiable {
 @MainActor
 @Observable
 final class ThemeManager {
-    private static let key = "app.theme"
+    private static let themeKey = "app.theme"
+    private static let hideAmountsKey = "app.hideAmounts"
 
     var current: AppTheme {
-        didSet { UserDefaults.standard.set(current.rawValue, forKey: Self.key) }
+        didSet { UserDefaults.standard.set(current.rawValue, forKey: Self.themeKey) }
+    }
+
+    var hideAmounts: Bool {
+        didSet { UserDefaults.standard.set(hideAmounts, forKey: Self.hideAmountsKey) }
     }
 
     var colorScheme: ColorScheme? { current.colorScheme }
 
     init() {
-        let stored = UserDefaults.standard.string(forKey: Self.key) ?? ""
+        let stored = UserDefaults.standard.string(forKey: Self.themeKey) ?? ""
         current = AppTheme(rawValue: stored) ?? .system
+        hideAmounts = UserDefaults.standard.bool(forKey: Self.hideAmountsKey)
     }
 }

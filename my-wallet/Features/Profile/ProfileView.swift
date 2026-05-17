@@ -15,6 +15,7 @@ struct ProfileView: View {
                     if auth.canUseBiometrics {
                         securityCard
                     }
+                    privacyCard
                     appearanceCard
                     signOutCard
                 }
@@ -149,6 +150,15 @@ struct ProfileView: View {
             @Bindable var auth = auth
             Toggle(isOn: $auth.biometricLockEnabled) {
                 Label("Require Face ID", systemImage: "faceid")
+            }
+        }
+    }
+
+    private var privacyCard: some View {
+        CardContainer {
+            @Bindable var theme = theme
+            Toggle(isOn: $theme.hideAmounts) {
+                Label("Hide amounts", systemImage: "eye.slash")
             }
         }
     }

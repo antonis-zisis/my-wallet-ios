@@ -16,6 +16,7 @@ private struct DonutChartCard: View {
     let title: String
     let slices: [ChartSlice]
 
+    @Environment(ThemeManager.self) private var theme
     @State private var isExpanded = false
     @State private var liveValue: Double?
     @State private var committedValue: Double?
@@ -82,7 +83,7 @@ private struct DonutChartCard: View {
                                     Text(sel.label)
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(sel.color)
-                                    Text(sel.amount.formatted(.currency(code: "EUR")))
+                                    Text(sel.amount.maskedCurrency(hidden: theme.hideAmounts))
                                         .font(.caption.weight(.semibold).monospacedDigit())
                                         .foregroundStyle(.primary)
                                     Text(String(format: "%.1f%%", pct))
@@ -95,7 +96,7 @@ private struct DonutChartCard: View {
                                     Text("Total")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    Text(total.formatted(.currency(code: "EUR")))
+                                    Text(total.maskedCurrency(hidden: theme.hideAmounts))
                                         .font(.caption.weight(.semibold).monospacedDigit())
                                         .foregroundStyle(.primary)
                                 }
