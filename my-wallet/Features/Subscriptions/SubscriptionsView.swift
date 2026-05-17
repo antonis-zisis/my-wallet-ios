@@ -6,7 +6,7 @@ private struct BillingBadge: View {
     let billingCycle: BillingCycle
 
     var body: some View {
-        Text(billingCycle == .monthly ? "Monthly" : "Yearly")
+        Text(billingCycle.label)
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -28,10 +28,29 @@ private struct CancelledBadge: View {
     }
 }
 
+private struct TrialBadge: View {
+    var body: some View {
+        Text("Trial")
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.orange.opacity(0.15))
+            .foregroundStyle(Color.orange)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+}
+
 // MARK: - Subscription row
 
 private struct SubscriptionRow: View {
     let subscription: Subscription
+
+    private var equivalentText: String {
+        if subscription.billingCycle == .monthly {
+            return String(format: "€%.2f/yr", subscription.amount * 12)
+        }
+        return String(format: "€%.2f/mo", subscription.monthlyCost)
+    }
 
     var body: some View {
         HStack(alignment: .center) {
@@ -40,27 +59,33 @@ private struct SubscriptionRow: View {
                     Text(subscription.name)
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.primary)
-
                     BillingBadge(billingCycle: subscription.billingCycle)
-
-                    if subscription.isCancelled {
-                        CancelledBadge()
-                    }
+                    if subscription.isInTrial { TrialBadge() }
+                    if subscription.isCancelled { CancelledBadge() }
                 }
 
                 HStack(spacing: 6) {
                     Text(String(format: "€%.2f", subscription.amount))
                     Text("·")
-                    Text(subscription.billingCycle == .yearly
-                         ? String(format: "€%.2f/mo", subscription.monthlyCost)
-                         : String(format: "€%.2f/yr", subscription.amount * 12))
+                    Text(equivalentText)
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
                 if subscription.isActive {
                     Group {
-                        if subscription.isCancelled, let endDate = subscription.formattedEndDate {
+                        if subscription.isInTrial,
+                           let days = subscription.trialDaysRemaining,
+                           let endDate = subscription.formattedTrialEndDate {
+                            switch days {
+                            case 0:
+                                Text("trial ends today · \(Text(endDate).fontWeight(.semibold))")
+                            case 1:
+                                Text("trial ends tomorrow · \(Text(endDate).fontWeight(.semibold))")
+                            default:
+                                Text("trial ends in \(days) days · \(Text(endDate).fontWeight(.semibold))")
+                            }
+                        } else if subscription.isCancelled, let endDate = subscription.formattedEndDate {
                             Text("active until \(Text(endDate).fontWeight(.semibold))")
                         } else {
                             Text("next renewal at \(Text(subscription.formattedNextRenewalDate).fontWeight(.semibold))")
@@ -68,6 +93,12 @@ private struct SubscriptionRow: View {
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                }
+
+                if let detail = subscription.detailLine {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
             }
 
@@ -216,6 +247,17 @@ private struct InsightCards: View {
     }
 }
 
+private extension View {
+    func styledInput() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(AppColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+    }
+}
+
 // MARK: - Create / Edit form
 
 private struct SubscriptionFormSheet: View {
@@ -226,7 +268,7 @@ private struct SubscriptionFormSheet: View {
         var title: String {
             switch self {
             case .create: return "New Subscription"
-            case .edit: return "Edit Subscription"
+            case .edit:   return "Edit Subscription"
             }
         }
     }
@@ -239,69 +281,158 @@ private struct SubscriptionFormSheet: View {
     @State private var amount: String
     @State private var billingCycle: BillingCycle
     @State private var startDate: Date
+    @State private var isTrial: Bool
+    @State private var trialEndsAt: Date
+    @State private var url: String
+    @State private var paymentMethod: String
+    @State private var notes: String
+    @State private var showAdditional: Bool
 
     private static let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
     }()
 
     init(mode: Mode, onSubmit: @escaping (CreateSubscriptionInput) -> Void) {
         self.mode = mode
         self.onSubmit = onSubmit
+        let defaultTrialEnd = Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()
         switch mode {
         case .create:
-            _name = State(initialValue: "")
-            _amount = State(initialValue: "")
-            _billingCycle = State(initialValue: .monthly)
-            _startDate = State(initialValue: Date())
+            _name          = State(initialValue: "")
+            _amount        = State(initialValue: "")
+            _billingCycle  = State(initialValue: .monthly)
+            _startDate     = State(initialValue: Date())
+            _isTrial       = State(initialValue: false)
+            _trialEndsAt   = State(initialValue: defaultTrialEnd)
+            _url           = State(initialValue: "")
+            _paymentMethod = State(initialValue: "")
+            _notes         = State(initialValue: "")
+            _showAdditional = State(initialValue: false)
         case .edit(let sub):
-            _name = State(initialValue: sub.name)
-            _amount = State(initialValue: String(format: "%.2f", sub.amount))
+            _name         = State(initialValue: sub.name)
+            _amount       = State(initialValue: String(format: "%.2f", sub.amount))
             _billingCycle = State(initialValue: sub.billingCycle)
-            let parsed = Self.dateFormatter.date(from: sub.startDate) ?? Date()
-            _startDate = State(initialValue: parsed)
+            let parsed    = Self.dateFormatter.date(from: sub.startDate) ?? Date()
+            _startDate    = State(initialValue: parsed)
+            if let t = sub.trialEndsAt {
+                _isTrial     = State(initialValue: sub.isInTrial)
+                _trialEndsAt = State(initialValue: Subscription.parseDate(t))
+            } else {
+                _isTrial     = State(initialValue: false)
+                _trialEndsAt = State(initialValue: defaultTrialEnd)
+            }
+            _url           = State(initialValue: sub.url ?? "")
+            _paymentMethod = State(initialValue: sub.paymentMethod ?? "")
+            _notes         = State(initialValue: sub.notes ?? "")
+            _showAdditional = State(initialValue: !(sub.url ?? "").isEmpty || !(sub.paymentMethod ?? "").isEmpty || !(sub.notes ?? "").isEmpty)
         }
     }
 
-    private var parsedAmount: Double? { Double(amount.replacingOccurrences(of: ",", with: ".")) }
+    private var parsedAmount: Double? {
+        Double(amount.replacingOccurrences(of: ",", with: "."))
+    }
 
     private var isValid: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty &&
-        (parsedAmount ?? 0) > 0
+        !name.trimmingCharacters(in: .whitespaces).isEmpty && (parsedAmount ?? -1) >= 0
     }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("e.g. Netflix", text: $name)
-                        .autocorrectionDisabled()
-                }
-                header: { Text("Name") }
-
-                Section {
-                    TextField("9.99", text: $amount)
-                        .keyboardType(.decimalPad)
-                }
-                header: { Text("Amount") }
-
-                Section {
-                    Picker("Billing Cycle", selection: $billingCycle) {
-                        Text("Monthly").tag(BillingCycle.monthly)
-                        Text("Yearly").tag(BillingCycle.yearly)
+            ScrollView {
+                VStack(spacing: 16) {
+                    fieldGroup(label: "Name") {
+                        TextField("e.g. Netflix", text: $name)
+                            .autocorrectionDisabled()
+                            .styledInput()
                     }
-                    .pickerStyle(.segmented)
-                }
-                header: { Text("Billing Cycle") }
 
-                Section {
-                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
-                        .datePickerStyle(.compact)
-                        .labelsHidden()
+                    fieldGroup(label: "Amount") {
+                        TextField("9.99", text: $amount)
+                            .keyboardType(.decimalPad)
+                            .styledInput()
+                    }
+
+                    fieldGroup(label: "Billing Cycle") {
+                        Picker("", selection: $billingCycle) {
+                            ForEach(BillingCycle.allCases, id: \.self) {
+                                Text($0.label).tag($0)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .styledInput()
+                    }
+
+                    fieldGroup(label: "Start Date") {
+                        DatePicker("", selection: $startDate, displayedComponents: .date)
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .styledInput()
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Currently on a free trial")
+                                .font(.subheadline)
+                            Spacer()
+                            Toggle("", isOn: $isTrial.animation())
+                                .labelsHidden()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(AppColors.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+
+                        if isTrial {
+                            fieldGroup(label: "Trial ends") {
+                                DatePicker("", selection: $trialEndsAt, displayedComponents: .date)
+                                    .datePickerStyle(.compact)
+                                    .labelsHidden()
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .styledInput()
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) { showAdditional.toggle() }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: showAdditional ? "chevron.up" : "chevron.down")
+                                    .font(.caption.weight(.medium))
+                                Text("Additional details")
+                                    .font(.subheadline.weight(.medium))
+                            }
+                            .foregroundStyle(.secondary)
+                        }
+
+                        if showAdditional {
+                            VStack(spacing: 12) {
+                                fieldGroup(label: "Website / Billing URL") {
+                                    TextField("https://...", text: $url)
+                                        .keyboardType(.URL)
+                                        .autocorrectionDisabled()
+                                        .textInputAutocapitalization(.never)
+                                        .styledInput()
+                                }
+                                fieldGroup(label: "Payment method") {
+                                    TextField("e.g. Revolut, Visa *1234", text: $paymentMethod)
+                                        .styledInput()
+                                }
+                                fieldGroup(label: "Notes") {
+                                    TextField("e.g. shared with sister", text: $notes)
+                                        .styledInput()
+                                }
+                            }
+                        }
+                    }
                 }
-                header: { Text("Start Date") }
+                .padding()
             }
+            .background(AppColors.bgApp)
             .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -314,7 +445,11 @@ private struct SubscriptionFormSheet: View {
                             name: name.trimmingCharacters(in: .whitespaces),
                             amount: parsedAmount ?? 0,
                             billingCycle: billingCycle.rawValue,
-                            startDate: Self.dateFormatter.string(from: startDate)
+                            startDate: Self.dateFormatter.string(from: startDate),
+                            trialEndsAt: isTrial ? Self.dateFormatter.string(from: trialEndsAt) : nil,
+                            notes: notes.isEmpty ? nil : notes,
+                            paymentMethod: paymentMethod.isEmpty ? nil : paymentMethod,
+                            url: url.isEmpty ? nil : url
                         )
                         onSubmit(input)
                         dismiss()
@@ -322,6 +457,16 @@ private struct SubscriptionFormSheet: View {
                     .disabled(!isValid)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func fieldGroup<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+            content()
         }
     }
 }
@@ -356,35 +501,51 @@ private struct ResumeFormSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Text("Enter a new start date for **\(subscription.name)**. You can also update the amount and billing cycle.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section {
-                    TextField("9.99", text: $amount)
-                        .keyboardType(.decimalPad)
-                }
-                header: { Text("Amount") }
-
-                Section {
-                    Picker("Billing Cycle", selection: $billingCycle) {
-                        Text("Monthly").tag(BillingCycle.monthly)
-                        Text("Yearly").tag(BillingCycle.yearly)
+            ScrollView {
+                VStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Enter a new start date for **\(subscription.name)**. You can also update the amount and billing cycle.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
-                    .pickerStyle(.segmented)
-                }
-                header: { Text("Billing Cycle") }
 
-                Section {
-                    DatePicker("New Start Date", selection: $startDate, displayedComponents: .date)
-                        .datePickerStyle(.compact)
-                        .labelsHidden()
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Amount")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                        TextField("9.99", text: $amount)
+                            .keyboardType(.decimalPad)
+                            .styledInput()
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Billing Cycle")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                        Picker("", selection: $billingCycle) {
+                            ForEach(BillingCycle.allCases, id: \.self) {
+                                Text($0.label).tag($0)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .styledInput()
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("New Start Date")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                        DatePicker("", selection: $startDate, displayedComponents: .date)
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .styledInput()
+                    }
                 }
-                header: { Text("New Start Date") }
+                .padding()
             }
+            .background(AppColors.bgApp)
             .navigationTitle("Resume Subscription")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -480,7 +641,11 @@ struct SubscriptionsView: View {
                     name: input.name,
                     amount: input.amount,
                     billingCycle: input.billingCycle,
-                    startDate: input.startDate
+                    startDate: input.startDate,
+                    trialEndsAt: input.trialEndsAt,
+                    notes: input.notes,
+                    paymentMethod: input.paymentMethod,
+                    url: input.url
                 )
                 Task { await viewModel.update(input: updateInput, token: token) }
             }
@@ -562,7 +727,7 @@ struct SubscriptionsView: View {
                                 Button("Delete", role: .destructive) { subscriptionToDelete = sub }
                             } label: {
                                 Image(systemName: "ellipsis")
-                                    .font(.subheadline)
+                                    .font(.body)
                                     .foregroundStyle(.secondary)
                                     .padding(.leading, 12)
                             }
@@ -636,6 +801,7 @@ struct SubscriptionsView: View {
 
     private var loadingList: some View {
         VStack(spacing: 8) {
+            // Summary cards row
             HStack(spacing: 8) {
                 ForEach(0..<3, id: \.self) { _ in
                     CardContainer(verticalPadding: 10, expandHeight: true) {
@@ -652,26 +818,49 @@ struct SubscriptionsView: View {
             }
             .fixedSize(horizontal: false, vertical: true)
 
+            // Insight cards
             ForEach(0..<2, id: \.self) { _ in
                 CardContainer(verticalPadding: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Next renewal · May 20, 2026")
                             .font(.caption)
                             .redacted(reason: .placeholder)
-                        Text("Subscription name  €00.00")
-                            .font(.body.weight(.semibold))
-                            .redacted(reason: .placeholder)
+                        HStack(spacing: 4) {
+                            Text("Subscription name")
+                                .font(.body.weight(.semibold))
+                                .redacted(reason: .placeholder)
+                            Text("·")
+                                .font(.body)
+                            Text("€00.00")
+                                .font(.body.weight(.semibold))
+                                .redacted(reason: .placeholder)
+                        }
                     }
                 }
             }
+
+            // Active section label + list
+            Text("Active (–)")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+                .redacted(reason: .placeholder)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 8)
 
             CardContainer(verticalPadding: 6) {
                 VStack(spacing: 0) {
                     ForEach(0..<5, id: \.self) { index in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Subscription name")
-                                .font(.subheadline)
-                                .redacted(reason: .placeholder)
+                            HStack(spacing: 6) {
+                                Text("Subscription name")
+                                    .font(.subheadline.weight(.medium))
+                                    .redacted(reason: .placeholder)
+                                Text("Monthly")
+                                    .font(.caption2.weight(.semibold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .redacted(reason: .placeholder)
+                            }
                             Text("€9.99 · €119.88/yr")
                                 .font(.caption)
                                 .redacted(reason: .placeholder)
@@ -684,7 +873,6 @@ struct SubscriptionsView: View {
                     }
                 }
             }
-            .padding(.top, 16)
         }
     }
 
