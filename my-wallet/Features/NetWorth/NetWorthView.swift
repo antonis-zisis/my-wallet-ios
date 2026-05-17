@@ -1,23 +1,91 @@
+import Charts
 import SwiftUI
+
+// MARK: - Sheet mode
+
+enum NetWorthSheetMode: Identifiable {
+    case create
+    case edit(NetWorthSnapshot)
+    case duplicate(NetWorthSnapshot)
+
+    var id: String {
+        switch self {
+        case .create: "create"
+        case .edit(let s): "edit-\(s.id)"
+        case .duplicate(let s): "dup-\(s.id)"
+        }
+    }
+}
 
 // MARK: - Entry Draft
 
-private struct EntryDraft: Identifiable {
+struct NetWorthEntryDraft: Identifiable {
     let id = UUID()
-    var type: String = "ASSET"
-    var category: String = assetCategories[0]
-    var label: String = ""
-    var amount: String = ""
+    var type: String
+    var category: String
+    var label: String
+    var amount: String
+
+    init(type: String = "ASSET", category: String? = nil, label: String = "", amount: String = "") {
+        self.type = type
+        self.category = category ?? (type == "ASSET" ? assetCategories[0] : liabilityCategories[0])
+        self.label = label
+        self.amount = amount
+    }
 }
 
-// MARK: - Create Snapshot Sheet
+// MARK: - Snapshot Sheet
 
-private struct CreateNetWorthSnapshotSheet: View {
-    let onSubmit: (CreateNetWorthSnapshotInput) -> Void
+struct NetWorthSnapshotSheet: View {
+    let mode: NetWorthSheetMode
+    let onCreate: (CreateNetWorthSnapshotInput) -> Void
+    let onUpdate: (String, UpdateNetWorthSnapshotInput) -> Void
+
     @Environment(\.dismiss) private var dismiss
+    @State private var title: String
+    @State private var snapshotDate: Date
+    @State private var entries: [NetWorthEntryDraft]
 
-    @State private var title = ""
-    @State private var entries: [EntryDraft] = [EntryDraft()]
+    init(
+        mode: NetWorthSheetMode,
+        onCreate: @escaping (CreateNetWorthSnapshotInput) -> Void,
+        onUpdate: @escaping (String, UpdateNetWorthSnapshotInput) -> Void
+    ) {
+        self.mode = mode
+        self.onCreate = onCreate
+        self.onUpdate = onUpdate
+
+        switch mode {
+        case .create:
+            _title = State(initialValue: "")
+            _snapshotDate = State(initialValue: Date())
+            _entries = State(initialValue: [NetWorthEntryDraft()])
+        case .edit(let snapshot):
+            _title = State(initialValue: snapshot.title)
+            _snapshotDate = State(initialValue: snapshot.parsedSnapshotDate)
+            _entries = State(initialValue: (snapshot.entries ?? []).map {
+                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount))
+            })
+        case .duplicate(let snapshot):
+            _title = State(initialValue: "")
+            _snapshotDate = State(initialValue: Date())
+            _entries = State(initialValue: (snapshot.entries ?? []).map {
+                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount))
+            })
+        }
+    }
+
+    private static func formatAmount(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(value)) : String(value)
+    }
+
+    private var navigationTitle: String {
+        switch mode {
+        case .create: "New Snapshot"
+        case .edit: "Edit Snapshot"
+        case .duplicate: "Duplicate Snapshot"
+        }
+    }
 
     private var totalAssets: Double {
         entries.filter { $0.type == "ASSET" }.reduce(0) { $0 + (Double($1.amount) ?? 0) }
@@ -37,6 +105,13 @@ private struct CreateNetWorthSnapshotSheet: View {
         }
     }
 
+    private var isoDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.string(from: snapshotDate)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -45,19 +120,21 @@ private struct CreateNetWorthSnapshotSheet: View {
                         .autocorrectionDisabled()
                 }
 
+                Section("Date") {
+                    DatePicker("Snapshot Date", selection: $snapshotDate, displayedComponents: .date)
+                        .labelsHidden()
+                }
+
                 ForEach($entries) { $entry in
                     entrySection(entry: $entry)
                 }
 
                 Section {
                     Button("+ Add Asset") {
-                        entries.append(EntryDraft())
+                        entries.append(NetWorthEntryDraft())
                     }
                     Button("+ Add Liability") {
-                        var draft = EntryDraft()
-                        draft.type = "LIABILITY"
-                        draft.category = liabilityCategories[0]
-                        entries.append(draft)
+                        entries.append(NetWorthEntryDraft(type: "LIABILITY"))
                     }
                 }
 
@@ -89,36 +166,22 @@ private struct CreateNetWorthSnapshotSheet: View {
                     }
                 }
             }
-            .navigationTitle("New Snapshot")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let input = CreateNetWorthSnapshotInput(
-                            title: title.trimmingCharacters(in: .whitespaces),
-                            entries: entries.map {
-                                NetWorthEntryInput(
-                                    type: $0.type,
-                                    label: $0.label.trimmingCharacters(in: .whitespaces),
-                                    amount: Double($0.amount) ?? 0,
-                                    category: $0.category
-                                )
-                            }
-                        )
-                        onSubmit(input)
-                        dismiss()
-                    }
-                    .disabled(!isValid)
+                    Button("Save") { submit() }
+                        .disabled(!isValid)
                 }
             }
         }
     }
 
     @ViewBuilder
-    private func entrySection(entry: Binding<EntryDraft>) -> some View {
+    private func entrySection(entry: Binding<NetWorthEntryDraft>) -> some View {
         let categories = entry.type.wrappedValue == "ASSET" ? assetCategories : liabilityCategories
         Section {
             Picker("Type", selection: entry.type) {
@@ -131,9 +194,7 @@ private struct CreateNetWorthSnapshotSheet: View {
             }
 
             Picker("Category", selection: entry.category) {
-                ForEach(categories, id: \.self) { cat in
-                    Text(cat).tag(cat)
-                }
+                ForEach(categories, id: \.self) { Text($0).tag($0) }
             }
 
             TextField("Label", text: entry.label)
@@ -158,6 +219,132 @@ private struct CreateNetWorthSnapshotSheet: View {
             }
         }
     }
+
+    private func submit() {
+        let entryInputs = entries.map {
+            NetWorthEntryInput(
+                type: $0.type,
+                label: $0.label.trimmingCharacters(in: .whitespaces),
+                amount: Double($0.amount) ?? 0,
+                category: $0.category
+            )
+        }
+        switch mode {
+        case .create, .duplicate:
+            onCreate(CreateNetWorthSnapshotInput(
+                title: title.trimmingCharacters(in: .whitespaces),
+                snapshotDate: isoDate,
+                entries: entryInputs
+            ))
+        case .edit(let snapshot):
+            onUpdate(snapshot.id, UpdateNetWorthSnapshotInput(
+                title: title.trimmingCharacters(in: .whitespaces),
+                snapshotDate: isoDate,
+                entries: entryInputs
+            ))
+        }
+        dismiss()
+    }
+}
+
+// MARK: - Chart mode
+
+private enum NetWorthChartMode: String, CaseIterable {
+    case netWorth = "Net Worth"
+    case breakdown = "Assets & Liabilities"
+}
+
+// MARK: - Trend Chart Card
+
+private struct TrendChartCard: View {
+    let snapshots: [NetWorthSnapshot]
+
+    @State private var collapsed = false
+    @State private var mode: NetWorthChartMode = .netWorth
+    @Environment(ThemeManager.self) private var theme
+
+    private var chartData: [NetWorthSnapshot] {
+        Array(snapshots.prefix(10).reversed())
+    }
+
+    var body: some View {
+        CardContainer {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Trend")
+                        .font(.headline)
+                    Spacer()
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) { collapsed.toggle() }
+                    } label: {
+                        Image(systemName: collapsed ? "chevron.down" : "chevron.up")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if !collapsed {
+                    Picker("", selection: $mode) {
+                        ForEach(NetWorthChartMode.allCases, id: \.self) {
+                            Text($0.rawValue).tag($0)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Chart {
+                        if mode == .netWorth {
+                            ForEach(chartData) { snapshot in
+                                LineMark(
+                                    x: .value("Date", snapshot.parsedSnapshotDate),
+                                    y: .value("Net Worth", snapshot.netWorth)
+                                )
+                                .interpolationMethod(.catmullRom)
+                                .foregroundStyle(AppColors.brand)
+
+                                AreaMark(
+                                    x: .value("Date", snapshot.parsedSnapshotDate),
+                                    y: .value("Net Worth", snapshot.netWorth)
+                                )
+                                .interpolationMethod(.catmullRom)
+                                .foregroundStyle(AppColors.brand.opacity(0.12))
+                            }
+                        } else {
+                            ForEach(chartData) { snapshot in
+                                LineMark(
+                                    x: .value("Date", snapshot.parsedSnapshotDate),
+                                    y: .value("Assets", snapshot.totalAssets),
+                                    series: .value("Type", "Assets")
+                                )
+                                .interpolationMethod(.catmullRom)
+                                .foregroundStyle(AppColors.income)
+
+                                LineMark(
+                                    x: .value("Date", snapshot.parsedSnapshotDate),
+                                    y: .value("Liabilities", snapshot.totalLiabilities),
+                                    series: .value("Type", "Liabilities")
+                                )
+                                .interpolationMethod(.catmullRom)
+                                .foregroundStyle(AppColors.expense)
+                            }
+                        }
+                    }
+                    .chartXAxis {
+                        AxisMarks(values: .automatic(desiredCount: 4)) {
+                            AxisGridLine()
+                            AxisValueLabel(format: .dateTime.month(.abbreviated))
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) {
+                            AxisGridLine()
+                            AxisValueLabel()
+                        }
+                    }
+                    .frame(height: 160)
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Snapshot Row
@@ -170,6 +357,16 @@ private struct SnapshotRow: View {
     private var netWorthColor: Color { snapshot.netWorth >= 0 ? AppColors.income : AppColors.expense }
     private var sign: String { snapshot.netWorth >= 0 ? "+" : "" }
 
+    private var delta: Double? {
+        guard let prev = snapshot.previousSnapshot?.netWorth else { return nil }
+        return snapshot.netWorth - prev
+    }
+
+    private var deltaPercent: Double? {
+        guard let prev = snapshot.previousSnapshot?.netWorth, prev != 0 else { return nil }
+        return (snapshot.netWorth - prev) / abs(prev) * 100
+    }
+
     var body: some View {
         HStack {
             Text(snapshot.title)
@@ -181,9 +378,20 @@ private struct SnapshotRow: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(netWorthColor)
                     .monospacedDigit()
-                Text(snapshot.formattedDate)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    if let d = delta, let pct = deltaPercent {
+                        HStack(spacing: 2) {
+                            Image(systemName: d >= 0 ? "arrow.up" : "arrow.down")
+                                .font(.system(size: 9, weight: .bold))
+                            Text(String(format: "%.1f%%", abs(pct)))
+                                .font(.caption2.weight(.medium))
+                        }
+                        .foregroundStyle(d >= 0 ? AppColors.income : AppColors.expense)
+                    }
+                    Text(snapshot.formattedDate)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.vertical, 12)
@@ -195,13 +403,13 @@ private struct SnapshotRow: View {
 struct NetWorthView: View {
     @Environment(AuthViewModel.self) private var auth
     @State private var viewModel = NetWorthViewModel()
-    @State private var showCreate = false
+    @State private var sheetMode: NetWorthSheetMode?
     @State private var snapshotToDelete: NetWorthSnapshot?
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(spacing: 12) {
                     if viewModel.isLoading {
                         loadingPlaceholder
                             .padding()
@@ -215,8 +423,13 @@ struct NetWorthView: View {
                         emptyState
                             .padding()
                     } else {
-                        snapshotList
-                            .padding()
+                        VStack(spacing: 12) {
+                            if viewModel.snapshots.count >= 2 {
+                                TrendChartCard(snapshots: viewModel.snapshots)
+                            }
+                            snapshotList
+                        }
+                        .padding()
                     }
                 }
             }
@@ -228,7 +441,7 @@ struct NetWorthView: View {
             .navigationTitle("Net Worth")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button { showCreate = true } label: {
+                    Button { sheetMode = .create } label: {
                         Image(systemName: "plus")
                     }
                 }
@@ -238,18 +451,22 @@ struct NetWorthView: View {
                 await viewModel.load(token: token)
             }
         }
-        .sheet(isPresented: $showCreate) {
-            CreateNetWorthSnapshotSheet { input in
-                guard let token = auth.token else { return }
-                Task { await viewModel.create(input: input, token: token) }
-            }
+        .sheet(item: $sheetMode) { mode in
+            NetWorthSnapshotSheet(
+                mode: mode,
+                onCreate: { input in
+                    guard let token = auth.token else { return }
+                    Task { await viewModel.create(input: input, token: token) }
+                },
+                onUpdate: { id, input in
+                    guard let token = auth.token else { return }
+                    Task { try? await viewModel.update(id: id, input: input, token: token) }
+                }
+            )
         }
         .alert(
             "Delete Snapshot",
-            isPresented: Binding(
-                get: { snapshotToDelete != nil },
-                set: { if !$0 { snapshotToDelete = nil } }
-            ),
+            isPresented: Binding(get: { snapshotToDelete != nil }, set: { if !$0 { snapshotToDelete = nil } }),
             presenting: snapshotToDelete
         ) { snapshot in
             Button("Delete", role: .destructive) {
@@ -302,7 +519,7 @@ struct NetWorthView: View {
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
             Button("Add your first snapshot") {
-                showCreate = true
+                sheetMode = .create
             }
             .font(.subheadline.weight(.semibold))
         }

@@ -1,5 +1,19 @@
 import Foundation
 
+struct NetWorthEntryRef: Decodable {
+    let type: String
+    let label: String
+    let amount: Double
+    let category: String
+}
+
+struct PreviousNetWorthSnapshot: Decodable {
+    let totalAssets: Double?
+    let totalLiabilities: Double?
+    let netWorth: Double?
+    let entries: [NetWorthEntryRef]?
+}
+
 struct NetWorthEntry: Decodable, Identifiable {
     let id: String
     let type: String
@@ -16,7 +30,9 @@ struct NetWorthSnapshot: Decodable, Identifiable {
     let totalLiabilities: Double
     let netWorth: Double
     let createdAt: String
+    let updatedAt: String?
     let entries: [NetWorthEntry]?
+    let previousSnapshot: PreviousNetWorthSnapshot?
 
     var formattedDate: String {
         parsedSnapshotDate.formatted(date: .abbreviated, time: .omitted)

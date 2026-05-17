@@ -12,6 +12,9 @@ private let getNetWorthSnapshotsQuery = """
         totalAssets
         totalLiabilities
         netWorth
+        previousSnapshot {
+          netWorth
+        }
         createdAt
       }
       totalCount
@@ -35,7 +38,19 @@ private let getNetWorthSnapshotQuery = """
         amount
         category
       }
+      previousSnapshot {
+        totalAssets
+        totalLiabilities
+        netWorth
+        entries {
+          type
+          label
+          amount
+          category
+        }
+      }
       createdAt
+      updatedAt
     }
   }
 """
@@ -49,7 +64,43 @@ private let createNetWorthSnapshotMutation = """
       totalAssets
       totalLiabilities
       netWorth
+      previousSnapshot {
+        netWorth
+      }
       createdAt
+    }
+  }
+"""
+
+private let updateNetWorthSnapshotMutation = """
+  mutation UpdateNetWorthSnapshot($id: ID!, $input: UpdateNetWorthSnapshotInput!) {
+    updateNetWorthSnapshot(id: $id, input: $input) {
+      id
+      title
+      snapshotDate
+      totalAssets
+      totalLiabilities
+      netWorth
+      entries {
+        id
+        type
+        label
+        amount
+        category
+      }
+      previousSnapshot {
+        totalAssets
+        totalLiabilities
+        netWorth
+        entries {
+          type
+          label
+          amount
+          category
+        }
+      }
+      createdAt
+      updatedAt
     }
   }
 """
@@ -79,6 +130,10 @@ private struct CreateNetWorthSnapshotResponse: Decodable {
     let createNetWorthSnapshot: NetWorthSnapshot
 }
 
+private struct UpdateNetWorthSnapshotResponse: Decodable {
+    let updateNetWorthSnapshot: NetWorthSnapshot
+}
+
 private struct DeleteNetWorthSnapshotResponse: Decodable {
     let deleteNetWorthSnapshot: Bool
 }
@@ -94,6 +149,13 @@ struct NetWorthEntryInput: Encodable {
 
 struct CreateNetWorthSnapshotInput: Encodable {
     let title: String
+    let snapshotDate: String
+    let entries: [NetWorthEntryInput]
+}
+
+struct UpdateNetWorthSnapshotInput: Encodable {
+    let title: String
+    let snapshotDate: String
     let entries: [NetWorthEntryInput]
 }
 
@@ -158,6 +220,22 @@ final class NetWorthViewModel {
             snapshots.insert(response.createNetWorthSnapshot, at: 0)
             totalCount += 1
         } catch {}
+    }
+
+    func update(id: String, input: UpdateNetWorthSnapshotInput, token: String) async throws -> NetWorthSnapshot {
+        isMutating = true
+        defer { isMutating = false }
+        struct Vars: Encodable { let id: String; let input: UpdateNetWorthSnapshotInput }
+        let response: UpdateNetWorthSnapshotResponse = try await client.perform(
+            query: updateNetWorthSnapshotMutation,
+            variables: Vars(id: id, input: input),
+            token: token
+        )
+        let updated = response.updateNetWorthSnapshot
+        if let index = snapshots.firstIndex(where: { $0.id == id }) {
+            snapshots[index] = updated
+        }
+        return updated
     }
 
     func delete(id: String, token: String) async {
