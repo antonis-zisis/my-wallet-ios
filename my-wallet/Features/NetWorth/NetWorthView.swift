@@ -25,12 +25,14 @@ struct NetWorthEntryDraft: Identifiable {
     var category: String
     var label: String
     var amount: String
+    var isExpanded: Bool
 
-    init(type: String = "ASSET", category: String? = nil, label: String = "", amount: String = "") {
+    init(type: String = "ASSET", category: String? = nil, label: String = "", amount: String = "", isExpanded: Bool = true) {
         self.type = type
         self.category = category ?? (type == "ASSET" ? assetCategories[0] : liabilityCategories[0])
         self.label = label
         self.amount = amount
+        self.isExpanded = isExpanded
     }
 }
 
@@ -64,13 +66,13 @@ struct NetWorthSnapshotSheet: View {
             _title = State(initialValue: snapshot.title)
             _snapshotDate = State(initialValue: snapshot.parsedSnapshotDate)
             _entries = State(initialValue: (snapshot.entries ?? []).map {
-                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount))
+                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount), isExpanded: false)
             })
         case .duplicate(let snapshot):
             _title = State(initialValue: "")
             _snapshotDate = State(initialValue: Date())
             _entries = State(initialValue: (snapshot.entries ?? []).map {
-                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount))
+                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount), isExpanded: false)
             })
         }
     }
@@ -130,20 +132,26 @@ struct NetWorthSnapshotSheet: View {
                             .styledInput()
                     }
 
-                    ForEach($entries) { $entry in
-                        entryCard(entry: $entry)
-                    }
+                    summaryCard
 
                     HStack(spacing: 8) {
                         addEntryButton(label: "Add Asset", color: AppColors.income) {
-                            entries.append(NetWorthEntryDraft())
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                for i in entries.indices { entries[i].isExpanded = false }
+                                entries.insert(NetWorthEntryDraft(type: "ASSET"), at: 0)
+                            }
                         }
                         addEntryButton(label: "Add Liability", color: AppColors.expense) {
-                            entries.append(NetWorthEntryDraft(type: "LIABILITY"))
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                for i in entries.indices { entries[i].isExpanded = false }
+                                entries.insert(NetWorthEntryDraft(type: "LIABILITY"), at: 0)
+                            }
                         }
                     }
 
-                    summaryCard
+                    ForEach($entries) { $entry in
+                        entryCard(entry: $entry)
+                    }
                 }
                 .padding()
             }
@@ -165,67 +173,91 @@ struct NetWorthSnapshotSheet: View {
     @ViewBuilder
     private func entryCard(entry: Binding<NetWorthEntryDraft>) -> some View {
         let categories = entry.type.wrappedValue == "ASSET" ? assetCategories : liabilityCategories
+        let typeName = entry.type.wrappedValue == "ASSET" ? "Asset" : "Liability"
+        let trimmedLabel = entry.label.wrappedValue.trimmingCharacters(in: .whitespaces)
+        let headerTitle = (!entry.isExpanded.wrappedValue && !trimmedLabel.isEmpty)
+            ? "\(typeName) - \(trimmedLabel)"
+            : typeName
+
         VStack(spacing: 0) {
-            HStack {
-                Text(entry.type.wrappedValue == "ASSET" ? "Asset" : "Liability")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                if entries.count > 1 {
-                    Button(role: .destructive) {
-                        entries.removeAll { $0.id == entry.id }
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.caption)
-                            .foregroundStyle(AppColors.expense)
+            // Header — tappable to toggle
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    entry.isExpanded.wrappedValue.toggle()
+                }
+            } label: {
+                HStack {
+                    Text(headerTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    HStack(spacing: 12) {
+                        if entry.isExpanded.wrappedValue && entries.count > 1 {
+                            Button {
+                                entries.removeAll { $0.id == entry.id }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.caption)
+                                    .foregroundStyle(AppColors.expense)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Image(systemName: entry.isExpanded.wrappedValue ? "chevron.up" : "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
                 }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
 
-            Divider()
+            // Fields — visible only when expanded
+            if entry.isExpanded.wrappedValue {
+                Divider()
 
-            HStack {
-                Text("Category")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Picker("", selection: entry.category) {
-                    ForEach(categories, id: \.self) { Text($0).tag($0) }
+                HStack {
+                    Text("Category")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Picker("", selection: entry.category) {
+                        ForEach(categories, id: \.self) { Text($0).tag($0) }
+                    }
+                    .labelsHidden()
                 }
-                .labelsHidden()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+
+                Divider()
+
+                HStack {
+                    Text("Label")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    TextField("e.g. Emergency Fund", text: entry.label)
+                        .autocorrectionDisabled()
+                        .multilineTextAlignment(.trailing)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+
+                Divider()
+
+                HStack {
+                    Text("Amount")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    TextField("0.00", text: entry.amount)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-
-            Divider()
-
-            HStack {
-                Text("Label")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                TextField("e.g. Emergency Fund", text: entry.label)
-                    .autocorrectionDisabled()
-                    .multilineTextAlignment(.trailing)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-
-            Divider()
-
-            HStack {
-                Text("Amount")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                TextField("0.00", text: entry.amount)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
         }
         .background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -707,31 +739,52 @@ struct NetWorthView: View {
     }
 
     private var loadingPlaceholder: some View {
-        CardContainer(verticalPadding: 4) {
-            VStack(spacing: 0) {
-                ForEach(0..<5, id: \.self) { index in
-                    HStack(alignment: .center, spacing: 0) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Snapshot title  ·  Jan 1, 2025")
-                                .font(.subheadline.weight(.medium))
-                                .redacted(reason: .placeholder)
-                            Text("Net Worth: +€0,000.00")
-                                .font(.caption)
-                                .monospacedDigit()
-                                .redacted(reason: .placeholder)
-                            Text("Change: +€000.00 (+0.0%)")
-                                .font(.caption)
-                                .monospacedDigit()
-                                .redacted(reason: .placeholder)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
+        VStack(spacing: 12) {
+            // Chart card skeleton (collapsed header)
+            CardContainer {
+                HStack {
+                    Text("Net Worth Over Time")
+                        .font(.headline)
+                        .redacted(reason: .placeholder)
+                    Spacer()
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary.opacity(0.4))
+                        Image(systemName: "chevron.down")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(AppColors.textTertiary.opacity(0.4))
-                            .padding(.leading, 8)
+                            .foregroundStyle(.secondary.opacity(0.4))
                     }
-                    .padding(.vertical, 8)
-                    if index < 4 { Divider() }
+                }
+            }
+
+            // Snapshot list skeleton
+            CardContainer(verticalPadding: 4) {
+                VStack(spacing: 0) {
+                    ForEach(0..<5, id: \.self) { index in
+                        HStack(alignment: .center, spacing: 0) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Snapshot title  ·  Jan 1, 2025")
+                                    .font(.subheadline.weight(.medium))
+                                    .redacted(reason: .placeholder)
+                                Text("Net Worth: +€0,000.00")
+                                    .font(.caption)
+                                    .monospacedDigit()
+                                    .redacted(reason: .placeholder)
+                                Text("Change: +€000.00 (+0.0%)")
+                                    .font(.caption)
+                                    .monospacedDigit()
+                                    .redacted(reason: .placeholder)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppColors.textTertiary.opacity(0.4))
+                                .padding(.leading, 8)
+                        }
+                        .padding(.vertical, 8)
+                        if index < 4 { Divider() }
+                    }
                 }
             }
         }
