@@ -428,62 +428,81 @@ private struct TrendChartCard: View {
                     .padding(.top, 14)
                     .padding(.bottom, 30)
 
-                    Chart {
-                        if mode == .netWorth {
-                            ForEach(chartData) { snapshot in
-                                AreaMark(
-                                    x: .value("Date", snapshot.parsedSnapshotDate),
-                                    y: .value("Net Worth", snapshot.netWorth)
-                                )
-                                .interpolationMethod(.linear)
-                                .foregroundStyle(AppColors.brand.opacity(0.12))
-                            }
-                            ForEach(chartData) { snapshot in
-                                LineMark(
-                                    x: .value("Date", snapshot.parsedSnapshotDate),
-                                    y: .value("Net Worth", snapshot.netWorth)
-                                )
-                                .interpolationMethod(.linear)
-                                .foregroundStyle(AppColors.brand)
-                            }
-                        } else {
-                            ForEach(chartData) { snapshot in
-                                LineMark(
-                                    x: .value("Date", snapshot.parsedSnapshotDate),
-                                    y: .value("Value", snapshot.totalAssets),
-                                    series: .value("Type", "Assets")
-                                )
-                                .interpolationMethod(.linear)
-                                .foregroundStyle(AppColors.income)
-                            }
-                            ForEach(chartData) { snapshot in
-                                LineMark(
-                                    x: .value("Date", snapshot.parsedSnapshotDate),
-                                    y: .value("Value", snapshot.totalLiabilities),
-                                    series: .value("Type", "Liabilities")
-                                )
-                                .interpolationMethod(.linear)
-                                .foregroundStyle(AppColors.expense)
-                            }
-                        }
+                    if mode == .netWorth {
+                        netWorthChart
+                    } else {
+                        breakdownChart
                     }
-                    .chartLegend(.hidden)
-                    .chartXAxis {
-                        AxisMarks(values: .automatic(desiredCount: 4)) {
-                            AxisGridLine()
-                            AxisValueLabel(format: .dateTime.month(.abbreviated))
-                        }
-                    }
-                    .chartYAxis {
-                        AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) {
-                            AxisGridLine()
-                            AxisValueLabel()
-                        }
-                    }
-                    .frame(height: 160)
                 }
             }
         }
+    }
+
+    private var netWorthChart: some View {
+        Chart {
+            ForEach(chartData) { snapshot in
+                AreaMark(
+                    x: .value("Date", snapshot.parsedSnapshotDate),
+                    y: .value("Net Worth", snapshot.netWorth)
+                )
+                .foregroundStyle(AppColors.brand.opacity(0.12))
+            }
+            ForEach(chartData) { snapshot in
+                LineMark(
+                    x: .value("Date", snapshot.parsedSnapshotDate),
+                    y: .value("Net Worth", snapshot.netWorth)
+                )
+                .foregroundStyle(AppColors.brand)
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 4)) {
+                AxisGridLine()
+                AxisValueLabel(format: .dateTime.month(.abbreviated).year(.twoDigits))
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) {
+                AxisGridLine()
+                AxisValueLabel()
+            }
+        }
+        .frame(height: 160)
+    }
+
+    private var breakdownChart: some View {
+        Chart {
+            ForEach(chartData) { snapshot in
+                LineMark(
+                    x: .value("Date", snapshot.parsedSnapshotDate),
+                    y: .value("Value", snapshot.totalAssets),
+                    series: .value("Type", "Assets")
+                )
+                .foregroundStyle(AppColors.income)
+            }
+            ForEach(chartData) { snapshot in
+                LineMark(
+                    x: .value("Date", snapshot.parsedSnapshotDate),
+                    y: .value("Value", snapshot.totalLiabilities),
+                    series: .value("Type", "Liabilities")
+                )
+                .foregroundStyle(AppColors.expense)
+            }
+        }
+        .chartLegend(.hidden)
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 4)) {
+                AxisGridLine()
+                AxisValueLabel(format: .dateTime.month(.abbreviated).year(.twoDigits))
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) {
+                AxisGridLine()
+                AxisValueLabel()
+            }
+        }
+        .frame(height: 160)
     }
 }
 
@@ -495,7 +514,6 @@ private struct SnapshotRow: View {
     @Environment(ThemeManager.self) private var theme
 
     private var netWorthColor: Color { snapshot.netWorth >= 0 ? AppColors.income : AppColors.expense }
-    private var sign: String { snapshot.netWorth >= 0 ? "+" : "" }
 
     private var delta: Double? {
         guard let prev = snapshot.previousSnapshot?.netWorth else { return nil }
@@ -508,33 +526,55 @@ private struct SnapshotRow: View {
     }
 
     var body: some View {
-        HStack {
-            Text(snapshot.title)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.primary)
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(sign)\(snapshot.netWorth.maskedCurrency(hidden: theme.hideAmounts))")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(netWorthColor)
+        HStack(alignment: .center, spacing: 0) {
+            VStack(alignment: .leading, spacing: 3) {
+                // Row 1: Title · Date
+                (Text(snapshot.title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary) +
+                 Text("  ·  ")
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary) +
+                 Text(snapshot.formattedDate)
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary))
+                .lineLimit(1)
+
+                // Row 2: Net Worth
+                netWorthText
+                    .font(.caption)
                     .monospacedDigit()
-                HStack(spacing: 6) {
-                    if let d = delta, let pct = deltaPercent {
-                        HStack(spacing: 2) {
-                            Image(systemName: d >= 0 ? "arrow.up" : "arrow.down")
-                                .font(.system(size: 9, weight: .bold))
-                            Text(String(format: "%.1f%%", abs(pct)))
-                                .font(.caption2.weight(.medium))
-                        }
-                        .foregroundStyle(d >= 0 ? AppColors.income : AppColors.expense)
-                    }
-                    Text(snapshot.formattedDate)
+
+                // Row 3: Change (only when previous snapshot exists)
+                if let d = delta, let pct = deltaPercent {
+                    changeText(delta: d, percent: pct)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
                 }
             }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppColors.textTertiary)
+                .padding(.leading, 8)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
+    }
+
+    private var netWorthText: Text {
+        let sign = snapshot.netWorth >= 0 ? "+" : ""
+        return Text("Net Worth: ").foregroundStyle(Color.secondary) +
+               Text("\(sign)\(snapshot.netWorth.maskedCurrency(hidden: theme.hideAmounts))")
+                   .foregroundStyle(netWorthColor)
+    }
+
+    private func changeText(delta d: Double, percent pct: Double) -> Text {
+        let dSign = d >= 0 ? "+" : ""
+        let dColor: Color = d >= 0 ? AppColors.income : AppColors.expense
+        let pctSign = pct >= 0 ? "+" : ""
+        let str = "\(dSign)\(d.maskedCurrency(hidden: theme.hideAmounts)) (\(pctSign)\(String(format: "%.1f", pct))%)"
+        return Text("Change: ").foregroundStyle(Color.secondary) +
+               Text(str).foregroundStyle(dColor)
     }
 }
 
@@ -622,19 +662,13 @@ struct NetWorthView: View {
     // MARK: - Subviews
 
     private var snapshotList: some View {
-        CardContainer {
+        CardContainer(verticalPadding: 4) {
             VStack(spacing: 0) {
                 ForEach(Array(viewModel.snapshots.enumerated()), id: \.element.id) { index, snapshot in
                     NavigationLink {
                         NetWorthDetailView(stub: snapshot, viewModel: viewModel)
                     } label: {
-                        HStack(spacing: 0) {
-                            SnapshotRow(snapshot: snapshot)
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(AppColors.textTertiary)
-                                .padding(.leading, 8)
-                        }
+                        SnapshotRow(snapshot: snapshot)
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
@@ -673,36 +707,30 @@ struct NetWorthView: View {
     }
 
     private var loadingPlaceholder: some View {
-        CardContainer {
+        CardContainer(verticalPadding: 4) {
             VStack(spacing: 0) {
                 ForEach(0..<5, id: \.self) { index in
-                    HStack(spacing: 0) {
-                        HStack {
-                            Text("Snapshot title placeholder")
+                    HStack(alignment: .center, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Snapshot title  ·  Jan 1, 2025")
                                 .font(.subheadline.weight(.medium))
                                 .redacted(reason: .placeholder)
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("+€0,000.00")
-                                    .font(.subheadline.weight(.semibold))
-                                    .monospacedDigit()
-                                    .redacted(reason: .placeholder)
-                                HStack(spacing: 6) {
-                                    Text("↑ 0.0%")
-                                        .font(.caption2.weight(.medium))
-                                        .redacted(reason: .placeholder)
-                                    Text("Jan 1, 2025")
-                                        .font(.caption)
-                                        .redacted(reason: .placeholder)
-                                }
-                            }
+                            Text("Net Worth: +€0,000.00")
+                                .font(.caption)
+                                .monospacedDigit()
+                                .redacted(reason: .placeholder)
+                            Text("Change: +€000.00 (+0.0%)")
+                                .font(.caption)
+                                .monospacedDigit()
+                                .redacted(reason: .placeholder)
                         }
+                        Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(AppColors.textTertiary.opacity(0.4))
                             .padding(.leading, 8)
                     }
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 8)
                     if index < 4 { Divider() }
                 }
             }

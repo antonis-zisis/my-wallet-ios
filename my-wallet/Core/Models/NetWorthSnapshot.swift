@@ -44,6 +44,12 @@ struct NetWorthSnapshot: Decodable, Identifiable {
         }
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return iso.date(from: snapshotDate) ?? Date()
+        if let date = iso.date(from: snapshotDate) { return date }
+        iso.formatOptions = [.withInternetDateTime]
+        if let date = iso.date(from: snapshotDate) { return date }
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        df.timeZone = TimeZone(identifier: "UTC")
+        return df.date(from: snapshotDate) ?? Date()
     }
 }
