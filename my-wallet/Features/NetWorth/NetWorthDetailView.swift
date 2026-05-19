@@ -36,7 +36,7 @@ struct NetWorthDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 10) {
                 headerCard
 
                 if isLoading {
@@ -146,23 +146,23 @@ struct NetWorthDetailView: View {
     // MARK: - Header Card
 
     private var headerCard: some View {
-        CardContainer {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(snapshot.title)
-                        .font(.headline)
-                    Spacer()
-                    Text(snapshot.formattedDate)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(snapshot.formattedDate)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
 
-                HStack(spacing: 0) {
-                    NetWorthDetailStatColumn(label: "Assets", amount: snapshot.totalAssets, color: AppColors.income, delta: deltaAssets)
-                    NetWorthDetailStatColumn(label: "Liabilities", amount: snapshot.totalLiabilities, color: AppColors.expense, delta: deltaLiabilities)
-                    NetWorthDetailStatColumn(label: "Net Worth", amount: snapshot.netWorth, color: netWorthColor, delta: deltaNetWorth)
+            HStack(spacing: 8) {
+                CardContainer(verticalPadding: 10, expandHeight: true) {
+                    NetWorthDetailStatColumn(label: "Net Worth", amount: snapshot.netWorth, color: netWorthColor, delta: deltaNetWorth, previousAmount: snapshot.previousSnapshot?.netWorth)
+                }
+                CardContainer(verticalPadding: 10, expandHeight: true) {
+                    NetWorthDetailStatColumn(label: "Assets", amount: snapshot.totalAssets, color: AppColors.income, delta: deltaAssets, previousAmount: snapshot.previousSnapshot?.totalAssets)
+                }
+                CardContainer(verticalPadding: 10, expandHeight: true) {
+                    NetWorthDetailStatColumn(label: "Liabilities", amount: snapshot.totalLiabilities, color: AppColors.expense, delta: deltaLiabilities, previousAmount: snapshot.previousSnapshot?.totalLiabilities)
                 }
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -209,39 +209,69 @@ private struct NetWorthDetailStatColumn: View {
     let amount: Double
     let color: Color
     let delta: Double?
+    let previousAmount: Double?
 
+    @State private var showPopover = false
     @Environment(ThemeManager.self) private var theme
+
+    private var deltaPercent: Double? {
+        guard let d = delta, let prev = previousAmount, prev != 0 else { return nil }
+        return d / abs(prev) * 100
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                if delta != nil {
+                    Button { showPopover.toggle() } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showPopover) {
+                        deltaPopover
+                    }
+                }
+            }
             Text(amount.maskedCurrency(hidden: theme.hideAmounts))
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            if let delta {
-                deltaLabel(delta)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
-    private func deltaLabel(_ delta: Double) -> some View {
-        let deltaColor = delta >= 0 ? AppColors.income : AppColors.expense
-        let sign = delta >= 0 ? "+" : ""
-        HStack(spacing: 2) {
-            Image(systemName: delta >= 0 ? "arrow.up" : "arrow.down")
-                .font(.system(size: 8, weight: .bold))
-            Text("\(sign)\(delta.maskedCurrency(hidden: theme.hideAmounts))")
-                .font(.caption2.monospacedDigit())
+    private var deltaPopover: some View {
+        if let d = delta {
+            let sign = d >= 0 ? "+" : ""
+            let dColor: Color = d >= 0 ? AppColors.income : AppColors.expense
+            VStack(alignment: .leading, spacing: 4) {
+                Text("vs. previous snapshot")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Group {
+                    if let pct = deltaPercent {
+                        let pctSign = pct >= 0 ? "+" : ""
+                        Text("\(sign)\(d.maskedCurrency(hidden: theme.hideAmounts)) (\(pctSign)\(String(format: "%.1f", pct))%)")
+                    } else {
+                        Text("\(sign)\(d.maskedCurrency(hidden: theme.hideAmounts))")
+                    }
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(dColor)
+                .monospacedDigit()
+            }
+            .padding(12)
+            .presentationCompactAdaptation(.popover)
         }
-        .foregroundStyle(deltaColor)
     }
 }
 
@@ -254,7 +284,20 @@ private struct EntriesSection: View {
     let total: Double
     let previousEntries: [NetWorthEntryRef]?
 
+    @State private var collapsed = false
     @Environment(ThemeManager.self) private var theme
+
+    private var groupedEntries: [(category: String, entries: [NetWorthEntry])] {
+        var seen = Set<String>()
+        var categories = [String]()
+        for entry in entries {
+            if seen.insert(entry.category).inserted {
+                categories.append(entry.category)
+            }
+        }
+        let grouped = Dictionary(grouping: entries) { $0.category }
+        return categories.map { (category: $0, entries: grouped[$0] ?? []) }
+    }
 
     private func delta(for entry: NetWorthEntry) -> Double? {
         guard let prevEntries = previousEntries else { return nil }
@@ -270,24 +313,61 @@ private struct EntriesSection: View {
     var body: some View {
         CardContainer {
             VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text(title)
-                        .font(.headline)
-                    Spacer()
-                    Text(total.maskedCurrency(hidden: theme.hideAmounts))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(totalColor)
-                        .monospacedDigit()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { collapsed.toggle() }
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(title)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            Text(total.maskedCurrency(hidden: theme.hideAmounts))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(totalColor)
+                                .monospacedDigit()
+                        }
+                        Spacer()
+                        Image(systemName: collapsed ? "chevron.down" : "chevron.up")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
                 }
-                .padding(.bottom, 10)
+                .buttonStyle(.plain)
 
-                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                    if index > 0 { Divider() }
-                    entryRow(entry: entry)
-                        .padding(.vertical, 8)
+                if !collapsed {
+                    VStack(spacing: 8) {
+                        ForEach(groupedEntries, id: \.category) { group in
+                            categoryCard(category: group.category, entries: group.entries)
+                        }
+                    }
+                    .padding(.top, 10)
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func categoryCard(category: String, entries: [NetWorthEntry]) -> some View {
+        VStack(spacing: 0) {
+            Text(category)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.top, 8)
+                .padding(.bottom, 6)
+
+            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+                Divider()
+                entryRow(entry: entry)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+            }
+        }
+        .background(AppColors.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
     }
 
     @ViewBuilder
@@ -297,23 +377,18 @@ private struct EntriesSection: View {
         let pct = total > 0 ? entry.amount / total * 100 : 0
 
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(entry.label)
-                        .font(.subheadline.weight(.medium))
-                    if entryIsNew {
-                        Text("New")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(AppColors.income.opacity(0.15))
-                            .foregroundStyle(AppColors.income)
-                            .clipShape(Capsule())
-                    }
+            HStack(spacing: 6) {
+                Text(entry.label)
+                    .font(.subheadline.weight(.medium))
+                if entryIsNew {
+                    Text("New")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(AppColors.income.opacity(0.15))
+                        .foregroundStyle(AppColors.income)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
-                Text(entry.category)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
