@@ -859,23 +859,32 @@ struct SubscriptionsView: View {
             CardContainer(verticalPadding: 6) {
                 VStack(spacing: 0) {
                     ForEach(0..<5, id: \.self) { index in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
-                                Text("Subscription name")
-                                    .font(.subheadline.weight(.medium))
+                        HStack(spacing: 0) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 6) {
+                                    Text("Subscription name")
+                                        .font(.subheadline.weight(.medium))
+                                        .redacted(reason: .placeholder)
+                                    Text("Monthly")
+                                        .font(.caption2.weight(.semibold))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(.secondary.opacity(0.12))
+                                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                                        .redacted(reason: .placeholder)
+                                }
+                                Text("€9.99 · €119.88/yr")
+                                    .font(.caption)
                                     .redacted(reason: .placeholder)
-                                Text("Monthly")
-                                    .font(.caption2.weight(.semibold))
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
+                                Text("next renewal at Jan 1, 2025")
+                                    .font(.caption)
                                     .redacted(reason: .placeholder)
                             }
-                            Text("€9.99 · €119.88/yr")
-                                .font(.caption)
-                                .redacted(reason: .placeholder)
-                            Text("next renewal at Jan 1, 2025")
-                                .font(.caption)
-                                .redacted(reason: .placeholder)
+                            Spacer()
+                            Image(systemName: "ellipsis")
+                                .font(.body)
+                                .foregroundStyle(.secondary.opacity(0.3))
+                                .padding(.leading, 12)
                         }
                         .padding(.vertical, 10)
                         if index < 4 { Divider() }
