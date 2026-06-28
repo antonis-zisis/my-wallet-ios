@@ -15,6 +15,7 @@ private let getSubscriptionsQuery = """
         endDate
         cancelledAt
         trialEndsAt
+        category
         notes
         paymentMethod
         url
@@ -41,6 +42,7 @@ private let createSubscriptionMutation = """
       endDate
       cancelledAt
       trialEndsAt
+      category
       notes
       paymentMethod
       url
@@ -63,6 +65,7 @@ private let updateSubscriptionMutation = """
       endDate
       cancelledAt
       trialEndsAt
+      category
       notes
       paymentMethod
       url
@@ -96,6 +99,7 @@ private let resumeSubscriptionMutation = """
       endDate
       cancelledAt
       trialEndsAt
+      category
       notes
       paymentMethod
       url
@@ -158,6 +162,7 @@ struct CreateSubscriptionInput: Encodable {
     let billingCycle: String
     let startDate: String
     let trialEndsAt: String?
+    let category: String?
     let notes: String?
     let paymentMethod: String?
     let url: String?
@@ -170,6 +175,7 @@ struct UpdateSubscriptionInput: Encodable {
     let billingCycle: String
     let startDate: String
     let trialEndsAt: String?
+    let category: String?
     let notes: String?
     let paymentMethod: String?
     let url: String?
@@ -229,6 +235,18 @@ final class SubscriptionsViewModel {
                     return total
                 }
             }
+    }
+
+    var categoryBreakdown: [CategoryBreakdownSlice] {
+        var totals: [String: Double] = [:]
+        for sub in activeSubscriptions {
+            if sub.isCancelled || sub.isInTrial { continue }
+            let category = (sub.category?.isEmpty == false) ? sub.category! : "Uncategorized"
+            totals[category, default: 0] += sub.monthlyCost
+        }
+        return totals
+            .map { CategoryBreakdownSlice(category: $0.key, total: $0.value) }
+            .sorted { ($0.total, $1.category) > ($1.total, $0.category) }
     }
 
     var nextRenewalSubscription: Subscription? {
@@ -342,6 +360,7 @@ final class SubscriptionsViewModel {
                     endDate: fields.endDate,
                     cancelledAt: fields.cancelledAt,
                     trialEndsAt: old.trialEndsAt,
+                    category: old.category,
                     notes: old.notes,
                     paymentMethod: old.paymentMethod,
                     url: old.url,

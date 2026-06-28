@@ -4,10 +4,10 @@ iOS companion app for the my-wallet web application. Goal is to mirror the web f
 
 ## Related Projects
 
-| Project | Path | Purpose |
-|---------|------|---------|
-| Web app | `../my-wallet/apps/web` | React/TypeScript frontend (reference implementation) |
-| Server  | `../my-wallet/apps/server` | Node/Apollo GraphQL API + Prisma/PostgreSQL |
+| Project | Path                       | Purpose                                              |
+|---------|----------------------------|------------------------------------------------------|
+| Web app | `../my-wallet/apps/web`    | React/TypeScript frontend (reference implementation) |
+| Server  | `../my-wallet/apps/server` | Node/Apollo GraphQL API + Prisma/PostgreSQL          |
 
 ## Tech Stack
 
@@ -79,13 +79,13 @@ my-wallet/
 
 ## Screens (mirroring web)
 
-| Tab | Web route | Description |
-|-----|-----------|-------------|
-| Dashboard | `/` | Overview: report summary, charts, subscriptions summary, net worth |
-| Reports | `/reports` | List, create, edit, lock reports + transactions |
-| Subscriptions | `/subscriptions` | Manage recurring payments |
-| Net Worth | `/net-worth` | Snapshots of assets and liabilities |
-| Profile | `/profile` | User info and settings |
+| Tab           | Web route        | Description                                                        |
+|---------------|------------------|--------------------------------------------------------------------|
+| Dashboard.    | `/`              | Overview: report summary, charts, subscriptions summary, net worth |
+| Reports       | `/reports`       | List, create, edit, lock reports + transactions                    |
+| Subscriptions | `/subscriptions` | Manage recurring payments                                          |
+| Net Worth     | `/net-worth`     | Snapshots of assets and liabilities                                |
+| Profile       | `/profile`       | User info and settings                                             |
 
 ## Server API
 
