@@ -76,7 +76,9 @@ private struct SubscriptionRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .center) {
+        HStack(alignment: .center, spacing: 12) {
+            SubscriptionAvatar(subscription: subscription)
+
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(subscription.name)
@@ -899,7 +901,10 @@ struct SubscriptionsView: View {
             CardContainer(verticalPadding: 6) {
                 VStack(spacing: 0) {
                     ForEach(0..<5, id: \.self) { index in
-                        HStack(spacing: 0) {
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(.secondary.opacity(0.15))
+                                .frame(width: 32, height: 32)
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 6) {
                                     Text("Subscription name")
