@@ -7,4 +7,9 @@ enum Config {
 
     // MARK: - API
     static let graphQLEndpoint = URL(string: "https://my-wallet-backend-883133501816.europe-west1.run.app/graphql")!
+
+    // MARK: - Logo.dev
+    // Public client token used to fetch subscription brand logos. Get one at
+    // https://logo.dev. Leave empty to fall back to initials avatars.
+    static let logoDevToken = ""
 }
