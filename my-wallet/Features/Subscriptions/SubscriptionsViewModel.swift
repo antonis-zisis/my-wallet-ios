@@ -237,6 +237,18 @@ final class SubscriptionsViewModel {
             }
     }
 
+    var categoryBreakdown: [CategoryBreakdownSlice] {
+        var totals: [String: Double] = [:]
+        for sub in activeSubscriptions {
+            if sub.isCancelled || sub.isInTrial { continue }
+            let category = (sub.category?.isEmpty == false) ? sub.category! : "Uncategorized"
+            totals[category, default: 0] += sub.monthlyCost
+        }
+        return totals
+            .map { CategoryBreakdownSlice(category: $0.key, total: $0.value) }
+            .sorted { ($0.total, $1.category) > ($1.total, $0.category) }
+    }
+
     var nextRenewalSubscription: Subscription? {
         activeSubscriptions
             .filter { !$0.isCancelled }

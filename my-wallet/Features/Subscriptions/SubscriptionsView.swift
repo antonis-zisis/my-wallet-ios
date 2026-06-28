@@ -643,6 +643,9 @@ struct SubscriptionsView: View {
                                 nextRenewal: viewModel.nextRenewalSubscription,
                                 mostExpensive: viewModel.mostExpensiveSubscription
                             )
+                            if !viewModel.categoryBreakdown.isEmpty {
+                                SubscriptionCategoryChart(breakdown: viewModel.categoryBreakdown)
+                            }
                         }
                     }
 
