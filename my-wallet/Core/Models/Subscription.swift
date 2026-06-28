@@ -28,6 +28,21 @@ enum BillingCycle: String, Codable, CaseIterable {
     }
 }
 
+enum SubscriptionCategory: String, CaseIterable, Identifiable {
+    case entertainment = "Entertainment"
+    case productivity  = "Productivity"
+    case utilities     = "Utilities"
+    case health        = "Health"
+    case finance       = "Finance"
+    case education     = "Education"
+    case music         = "Music"
+    case news          = "News"
+    case other         = "Other"
+
+    var id: String { rawValue }
+    var label: String { rawValue }
+}
+
 struct Subscription: Decodable, Identifiable {
     let id: String
     let name: String
@@ -38,6 +53,7 @@ struct Subscription: Decodable, Identifiable {
     let endDate: String?
     let cancelledAt: String?
     let trialEndsAt: String?
+    let category: String?
     let notes: String?
     let paymentMethod: String?
     let url: String?

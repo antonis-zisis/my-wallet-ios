@@ -16,6 +16,24 @@ private struct BillingBadge: View {
     }
 }
 
+private struct CategoryBadge: View {
+    let category: String
+
+    private var color: Color {
+        CategoryColors.subscription[category] ?? CategoryColors.fallback
+    }
+
+    var body: some View {
+        Text(category)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.12))
+            .foregroundStyle(color)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+}
+
 private struct CancelledBadge: View {
     var body: some View {
         Text("Cancelled")
@@ -65,6 +83,9 @@ private struct SubscriptionRow: View {
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.primary)
                     BillingBadge(billingCycle: subscription.billingCycle)
+                    if let category = subscription.category, !category.isEmpty {
+                        CategoryBadge(category: category)
+                    }
                     if subscription.isInTrial { TrialBadge() }
                     if subscription.isCancelled { CancelledBadge() }
                 }
@@ -290,6 +311,7 @@ private struct SubscriptionFormSheet: View {
     @State private var amount: String
     @State private var billingCycle: BillingCycle
     @State private var startDate: Date
+    @State private var category: SubscriptionCategory?
     @State private var isTrial: Bool
     @State private var trialEndsAt: Date
     @State private var url: String
@@ -311,6 +333,7 @@ private struct SubscriptionFormSheet: View {
             _amount        = State(initialValue: "")
             _billingCycle  = State(initialValue: .monthly)
             _startDate     = State(initialValue: Date())
+            _category      = State(initialValue: nil)
             _isTrial       = State(initialValue: false)
             _trialEndsAt   = State(initialValue: defaultTrialEnd)
             _url           = State(initialValue: "")
@@ -323,6 +346,7 @@ private struct SubscriptionFormSheet: View {
             _billingCycle = State(initialValue: sub.billingCycle)
             let parsed    = Self.dateFormatter.date(from: sub.startDate) ?? Date()
             _startDate    = State(initialValue: parsed)
+            _category     = State(initialValue: sub.category.flatMap(SubscriptionCategory.init(rawValue:)))
             if let t = sub.trialEndsAt {
                 _isTrial     = State(initialValue: sub.isInTrial)
                 _trialEndsAt = State(initialValue: Subscription.parseDate(t))
@@ -378,6 +402,18 @@ private struct SubscriptionFormSheet: View {
                             .labelsHidden()
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .styledInput()
+                    }
+
+                    fieldGroup(label: "Category") {
+                        Picker("", selection: $category) {
+                            Text("Uncategorized").tag(SubscriptionCategory?.none)
+                            ForEach(SubscriptionCategory.allCases) { category in
+                                Text(category.label).tag(SubscriptionCategory?.some(category))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .styledInput()
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -456,6 +492,7 @@ private struct SubscriptionFormSheet: View {
                             billingCycle: billingCycle.rawValue,
                             startDate: Self.dateFormatter.string(from: startDate),
                             trialEndsAt: isTrial ? Self.dateFormatter.string(from: trialEndsAt) : nil,
+                            category: category?.rawValue,
                             notes: notes.isEmpty ? nil : notes,
                             paymentMethod: paymentMethod.isEmpty ? nil : paymentMethod,
                             url: url.isEmpty ? nil : url
@@ -652,6 +689,7 @@ struct SubscriptionsView: View {
                     billingCycle: input.billingCycle,
                     startDate: input.startDate,
                     trialEndsAt: input.trialEndsAt,
+                    category: input.category,
                     notes: input.notes,
                     paymentMethod: input.paymentMethod,
                     url: input.url

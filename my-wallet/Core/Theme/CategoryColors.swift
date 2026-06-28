@@ -19,6 +19,9 @@ enum CategoryColors {
 
     // Liability categories — LIABILITY_CATEGORY_COLORS
     static let liability: [String: Color] = liabilityMap
+
+    // Subscription categories — SUBSCRIPTION_CATEGORY_COLORS
+    static let subscription: [String: Color] = subscriptionMap
 }
 
 private let expenseMap: [String: Color] = {
@@ -59,5 +62,19 @@ private let liabilityMap: [String: Color] = {
     m["Other"]         = Color(hex: 0x9CA3AF as UInt32)
     m["Personal Loan"] = Color(hex: 0x8B5CF6 as UInt32)
     m["Student Loan"]  = Color(hex: 0xF59E0B as UInt32)
+    return m
+}()
+
+private let subscriptionMap: [String: Color] = {
+    var m: [String: Color] = [:]
+    m["Education"]     = Color(hex: 0xF59E0B as UInt32)
+    m["Entertainment"] = Color(hex: 0xA855F7 as UInt32)
+    m["Finance"]       = Color(hex: 0x10B981 as UInt32)
+    m["Health"]        = Color(hex: 0x14B8A6 as UInt32)
+    m["Music"]         = Color(hex: 0xEC4899 as UInt32)
+    m["News"]          = Color(hex: 0xFB923C as UInt32)
+    m["Other"]         = Color(hex: 0x64748B as UInt32)
+    m["Productivity"]  = Color(hex: 0x3B82F6 as UInt32)
+    m["Utilities"]     = Color(hex: 0x0891B2 as UInt32)
     return m
 }()
