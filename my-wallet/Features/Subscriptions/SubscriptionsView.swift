@@ -344,8 +344,7 @@ private struct SubscriptionFormSheet: View {
             _name         = State(initialValue: sub.name)
             _amount       = State(initialValue: String(format: "%.2f", sub.amount))
             _billingCycle = State(initialValue: sub.billingCycle)
-            let parsed    = Self.dateFormatter.date(from: sub.startDate) ?? Date()
-            _startDate    = State(initialValue: parsed)
+            _startDate    = State(initialValue: Subscription.parseDate(sub.startDate))
             _category     = State(initialValue: sub.category.flatMap(SubscriptionCategory.init(rawValue:)))
             if let t = sub.trialEndsAt {
                 _isTrial     = State(initialValue: sub.isInTrial)
