@@ -44,12 +44,12 @@ Select a simulator or connected device and hit **Cmd+R** to build and run.
 my-wallet-ios/
 ├── my-wallet/
 │   ├── my_walletApp.swift        # App entry point and RootView
-│   ├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Net Worth, Profile)
+│   ├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Contracts, Net Worth, Profile)
 │   ├── Core/
 │   │   ├── Auth/                 # BiometricAuthService (LocalAuthentication)
 │   │   ├── Config.swift           # Supabase URL/key, GraphQL endpoint
 │   │   ├── Network/              # URLSession-based GraphQL client
-│   │   ├── Models/               # Report, Transaction, Subscription, NetWorthSnapshot
+│   │   ├── Models/               # Report, Transaction, Subscription, Contract, NetWorthSnapshot
 │   │   ├── Extensions/
 │   │   ├── Components/           # Reusable SwiftUI components (CardContainer)
 │   │   ├── Supabase/             # Shared SupabaseClient instance
@@ -59,6 +59,7 @@ my-wallet-ios/
 │   │   ├── Dashboard/            # DashboardView, DashboardViewModel
 │   │   ├── Reports/              # ReportsView, ReportDetailView, ReportChartsView + ViewModels
 │   │   ├── Subscriptions/        # SubscriptionsView, SubscriptionsViewModel
+│   │   ├── Contracts/            # ContractsView, ContractsViewModel
 │   │   ├── NetWorth/             # NetWorthView, NetWorthDetailView, NetWorthViewModel
 │   │   └── Profile/               # ProfileView, ProfileViewModel
 │   └── Assets.xcassets/
