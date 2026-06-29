@@ -828,17 +828,19 @@ private struct TransactionRow: View {
 extension TransactionFormSheet {
     @ViewBuilder
     func typeToggleButton(_ t: TransactionType, label: String) -> some View {
+        let color = t == .income ? AppColors.income : AppColors.expense
+        let isSelected = type == t
         Button {
             type = t
             category = ""
         } label: {
             Text(label)
-                .font(.subheadline.weight(.medium))
+                .font(.subheadline.weight(isSelected ? .semibold : .medium))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 7)
-                .background(type == t ? AppColors.surface : Color.clear)
+                .background(isSelected ? color : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 3))
-                .foregroundStyle(type == t ? .primary : AppColors.textSecondary)
+                .foregroundStyle(isSelected ? Color.white : color)
         }
         .buttonStyle(.plain)
     }
