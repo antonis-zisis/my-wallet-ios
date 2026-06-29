@@ -66,6 +66,23 @@ private let getSubscriptionsQuery = """
   }
 """
 
+private let getContractsQuery = """
+  query GetDashboardContracts {
+    contracts(page: 1, pageSize: 50, expired: false, sortBy: END_DATE, sortOrder: ASC) {
+      items {
+        id
+        category
+        provider
+        plan
+        startDate
+        endDate
+        cost
+        isExpired
+      }
+    }
+  }
+"""
+
 private let getNetWorthSnapshotsQuery = """
   query GetLatestNetWorthSnapshot {
     netWorthSnapshots(page: 1, pageSize: 6) {
@@ -134,6 +151,14 @@ private struct SubscriptionsResponse: Decodable {
     let subscriptions: SubscriptionsResult
 }
 
+private struct ContractsResult: Decodable {
+    let items: [Contract]
+}
+
+private struct ContractsResponse: Decodable {
+    let contracts: ContractsResult
+}
+
 private struct NetWorthSnapshotsResult: Decodable {
     let items: [NetWorthSnapshot]
 }
@@ -155,10 +180,17 @@ final class DashboardViewModel {
     var previousReport: Report?
     var reportSummaries: [ReportSummaryItem] = []
     var subscriptions: [Subscription] = []
+    var contracts: [Contract] = []
     var latestSnapshot: NetWorthSnapshot?
     var previousSnapshot: NetWorthSnapshot?
     var recentSnapshots: [NetWorthSnapshot] = []
     var error: String?
+
+    var expiringContracts: [Contract] {
+        contracts
+            .filter { $0.isExpiringSoon }
+            .sorted { ($0.daysUntilExpiration ?? .max) < ($1.daysUntilExpiration ?? .max) }
+    }
 
     private let client = GraphQLClient.shared
 
@@ -188,6 +220,10 @@ final class DashboardViewModel {
                 query: getSubscriptionsQuery,
                 token: token
             )
+            let contractsResponse: ContractsResponse = try await client.perform(
+                query: getContractsQuery,
+                token: token
+            )
             let snapshots: NetWorthSnapshotsResponse = try await client.perform(
                 query: getNetWorthSnapshotsQuery,
                 token: token
@@ -196,6 +232,7 @@ final class DashboardViewModel {
             totalReportsCount = reports.reports.totalCount
             reportSummaries = summaries.reports.items.reversed()
             subscriptions = subs.subscriptions.items
+            contracts = contractsResponse.contracts.items
             let snapshotItems = snapshots.netWorthSnapshots.items
             latestSnapshot = snapshotItems.first
             previousSnapshot = snapshotItems.count >= 2 ? snapshotItems[1] : nil

@@ -14,6 +14,7 @@ struct DashboardView: View {
                 VStack(spacing: 36) {
                     ReportSummarySection(viewModel: viewModel)
                     SubscriptionsSection(viewModel: viewModel)
+                    ContractsSection(viewModel: viewModel)
                     NetWorthSection(viewModel: viewModel)
                 }
                 .padding()
@@ -256,6 +257,133 @@ private struct SubscriptionsSection: View {
                         }
                         .padding(.vertical, 4)
                         Divider()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Contracts Section
+
+private struct ContractsSection: View {
+    let viewModel: DashboardViewModel
+
+    var body: some View {
+        VStack(spacing: 12) {
+            SectionHeader(title: "Contracts", systemImage: "doc.text")
+
+            if viewModel.showLoadingState {
+                contractsLoadingPlaceholder
+            } else {
+                ContractsExpiringSoonCard(contracts: viewModel.expiringContracts)
+            }
+        }
+    }
+
+    private var contractsLoadingPlaceholder: some View {
+        CardContainer {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Contracts Expiring Soon")
+                        .font(.headline)
+                        .redacted(reason: .placeholder)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(0..<2, id: \.self) { _ in
+                    HStack {
+                        Text("Provider name")
+                            .font(.subheadline)
+                            .redacted(reason: .placeholder)
+                        Spacer()
+                        Text("expires in 12 days")
+                            .font(.caption)
+                            .redacted(reason: .placeholder)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+}
+
+private struct ContractsExpiringSoonCard: View {
+    let contracts: [Contract]
+    @State private var isExpanded = false
+
+    private let visibleLimit = 3
+
+    private var visible: [Contract] { Array(contracts.prefix(visibleLimit)) }
+    private var overflow: Int { max(0, contracts.count - visible.count) }
+
+    private func countdown(_ days: Int) -> String {
+        switch days {
+        case 0:  return "expires today"
+        case 1:  return "expires tomorrow"
+        default: return "expires in \(days) days"
+        }
+    }
+
+    var body: some View {
+        CardContainer {
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+                } label: {
+                    HStack {
+                        Text("Contracts Expiring Soon")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    }
+                }
+                .buttonStyle(.plain)
+
+                if isExpanded {
+                    if contracts.isEmpty {
+                        Text("No contracts expiring soon.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 12)
+                    } else {
+                        VStack(spacing: 0) {
+                            ForEach(Array(visible.enumerated()), id: \.element.id) { index, contract in
+                                if index > 0 { Divider() }
+                                HStack(spacing: 8) {
+                                    Text(contract.provider)
+                                        .font(.subheadline.weight(.medium))
+                                        .lineLimit(1)
+                                    Text(contract.category)
+                                        .font(.caption2.weight(.semibold))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(.secondary.opacity(0.12))
+                                        .foregroundStyle(.secondary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                                    Spacer()
+                                    Text(countdown(contract.daysUntilExpiration ?? 0))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 8)
+                            }
+                        }
+                        .padding(.top, 12)
+
+                        if overflow > 0 {
+                            Text("+\(overflow) more")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tint)
+                                .padding(.top, 8)
+                        }
                     }
                 }
             }
