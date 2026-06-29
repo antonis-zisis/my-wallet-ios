@@ -2,11 +2,13 @@ import SwiftUI
 
 struct ReportsView: View {
     @Environment(AuthViewModel.self) private var auth
+    @Environment(AppRouter.self) private var router
     @State private var viewModel = ReportsViewModel()
     @State private var showCreateSheet = false
 
     var body: some View {
-        NavigationStack {
+        @Bindable var router = router
+        NavigationStack(path: $router.reportsPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     if viewModel.isLoading {
@@ -36,6 +38,13 @@ struct ReportsView: View {
                 await viewModel.loadInitial(token: token)
             }
             .overlay { overlayContent }
+            .navigationDestination(for: Report.self) { report in
+                ReportDetailView(stub: report) { updated in
+                    viewModel.update(report: updated)
+                } onDelete: {
+                    viewModel.remove(id: report.id)
+                }
+            }
             .navigationTitle("Reports")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -65,13 +74,7 @@ struct ReportsView: View {
                     Divider()
                         .padding(.leading, 16)
                 }
-                NavigationLink {
-                    ReportDetailView(stub: report) { updated in
-                        viewModel.update(report: updated)
-                    } onDelete: {
-                        viewModel.remove(id: report.id)
-                    }
-                } label: {
+                NavigationLink(value: report) {
                     HStack(alignment: .center, spacing: 8) {
                         ReportRow(report: report)
                         Image(systemName: "chevron.right")
@@ -312,4 +315,5 @@ private struct CreateReportSheet: View {
 #Preview {
     ReportsView()
         .environment(AuthViewModel())
+        .environment(AppRouter())
 }

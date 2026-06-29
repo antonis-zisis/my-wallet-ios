@@ -60,6 +60,11 @@ struct Report: Decodable, Identifiable {
     }
 }
 
+extension Report: Hashable {
+    static func == (lhs: Report, rhs: Report) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+
 // MARK: - Transaction
 
 struct Transaction: Decodable, Identifiable {

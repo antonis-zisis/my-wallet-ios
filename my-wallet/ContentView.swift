@@ -1,10 +1,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    @AppStorage("selectedTab") private var selectedTab = 0
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        @Bindable var router = router
+        TabView(selection: $router.selectedTab) {
             DashboardView()
                 .tabItem {
                     Label("Overview", systemImage: "house.fill")
@@ -48,4 +49,5 @@ struct ContentView: View {
     ContentView()
         .environment(AuthViewModel())
         .environment(ThemeManager())
+        .environment(AppRouter())
 }
