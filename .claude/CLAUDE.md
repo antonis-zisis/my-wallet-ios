@@ -21,7 +21,7 @@ iOS companion app for the my-wallet web application. Goal is to mirror the web f
 ```text
 my-wallet/
 ├── my_walletApp.swift        # @main entry; injects AuthViewModel + ThemeManager, shows RootView
-├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Net Worth, Profile)
+├── ContentView.swift         # Root TabView (Dashboard, Reports, Subscriptions, Contracts, Net Worth, Profile)
 ├── Core/
 │   ├── Config.swift          # Supabase URL (delegates to Secrets.supabaseAnonKey), GraphQL endpoint
 │   ├── Secrets.swift         # Gitignored — holds supabaseAnonKey; copy from Secrets.swift.example
@@ -34,6 +34,7 @@ my-wallet/
 │   ├── Models/
 │   │   ├── Report.swift                # Report, Transaction, TransactionType
 │   │   ├── Subscription.swift          # Subscription, BillingCycle
+│   │   ├── Contract.swift              # Contract, ContractCategory, ContractSortField
 │   │   └── NetWorthSnapshot.swift      # NetWorthSnapshot, NetWorthEntry, NetWorthEntryType
 │   ├── Extensions/
 │   │   └── Array+Safe.swift            # subscript(safe:) helper
@@ -60,6 +61,9 @@ my-wallet/
 │   ├── Subscriptions/
 │   │   ├── SubscriptionsViewModel.swift
 │   │   └── SubscriptionsView.swift
+│   ├── Contracts/
+│   │   ├── ContractsViewModel.swift
+│   │   └── ContractsView.swift         # List with search + sort; create/edit/delete form sheet
 │   ├── NetWorth/
 │   │   ├── NetWorthViewModel.swift
 │   │   ├── NetWorthView.swift
@@ -79,19 +83,20 @@ my-wallet/
 
 ## Screens (mirroring web)
 
-| Tab           | Web route        | Description                                                        |
-|---------------|------------------|--------------------------------------------------------------------|
-| Dashboard.    | `/`              | Overview: report summary, charts, subscriptions summary, net worth |
-| Reports       | `/reports`       | List, create, edit, lock reports + transactions                    |
-| Subscriptions | `/subscriptions` | Manage recurring payments                                          |
-| Net Worth     | `/net-worth`     | Snapshots of assets and liabilities                                |
-| Profile       | `/profile`       | User info and settings                                             |
+| Tab           | Web route        | Description                                                                    |
+|---------------|------------------|--------------------------------------------------------------------------------|
+| Dashboard.    | `/`              | Overview: report summary, charts, subscriptions summary, contracts, net worth  |
+| Reports       | `/reports`       | List, create, edit, lock reports + transactions                                |
+| Subscriptions | `/subscriptions` | Manage recurring payments                                                      |
+| Contracts     | `/contracts`     | Track service contracts and when they expire                                   |
+| Net Worth     | `/net-worth`     | Snapshots of assets and liabilities                                            |
+| Profile       | `/profile`       | User info and settings                                                         |
 
 ## Server API
 
 - **Endpoint**: GraphQL at `/graphql`
 - **Auth**: `Authorization: Bearer <supabase_jwt>`
-- **Key queries/mutations**: reports, transactions, subscriptions, netWorthSnapshots, me
+- **Key queries/mutations**: reports, transactions, subscriptions, contracts, netWorthSnapshots, me
 
 ### Core Data Models
 
@@ -100,6 +105,7 @@ User          id, supabaseId, email, fullName
 Report        id, title, userId, isLocked, transactions[]
 Transaction   id, reportId, type(INCOME|EXPENSE), amount, description, category, date
 Subscription  id, userId, name, amount, billingCycle(MONTHLY|YEARLY), isActive, startDate
+Contract      id, userId, category, provider, plan, startDate, endDate, cost, isExpired
 NetWorthSnapshot  id, userId, title, entries[]
 NetWorthEntry     id, snapshotId, type(ASSET|LIABILITY), label, amount, category
 ```

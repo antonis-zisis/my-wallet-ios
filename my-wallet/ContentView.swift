@@ -23,17 +23,23 @@ struct ContentView: View {
                 }
                 .tag(2)
 
+            ContractsView()
+                .tabItem {
+                    Label("Contracts", systemImage: "doc.plaintext")
+                }
+                .tag(3)
+
             NetWorthView()
                 .tabItem {
                     Label("Net Worth", systemImage: "chart.line.uptrend.xyaxis")
                 }
-                .tag(3)
+                .tag(4)
 
             ProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
                 }
-                .tag(4)
+                .tag(5)
         }
     }
 }
