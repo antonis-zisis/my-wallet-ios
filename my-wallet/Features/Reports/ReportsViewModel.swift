@@ -19,8 +19,8 @@ private let createReportMutation = """
 """
 
 private let getReportsQuery = """
-  query GetReports($page: Int, $pageSize: Int) {
-    reports(page: $page, pageSize: $pageSize) {
+  query GetReports($page: Int, $pageSize: Int, $search: String, $sortBy: ReportSortField, $sortOrder: SortOrder) {
+    reports(page: $page, pageSize: $pageSize, search: $search, sortBy: $sortBy, sortOrder: $sortOrder) {
       items {
         id
         title
@@ -59,9 +59,41 @@ final class ReportsViewModel {
     var hasMore = false
     var error: String?
 
+    var searchText = ""
+    var sortOption: ReportSortOption = .newest
+
     private var currentPage = 0
     private(set) var totalCount = 0
     private let client = GraphQLClient.shared
+
+    /// Whether the user is currently filtering by a non-empty search term.
+    var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private struct Vars: Encodable {
+        let page: Int
+        let pageSize: Int
+        let search: String?
+        let sortBy: String
+        let sortOrder: String
+    }
+
+    private func makeVars(page: Int) -> Vars {
+        let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+        return Vars(
+            page: page,
+            pageSize: PAGE_SIZE,
+            search: trimmed.isEmpty ? nil : trimmed,
+            sortBy: sortOption.sortBy,
+            sortOrder: sortOption.sortOrder
+        )
+    }
+
+    /// Re-fetch from the first page using the current search term and sort option.
+    func reload(token: String) async {
+        await loadInitial(token: token)
+    }
 
     func loadInitial(token: String) async {
         guard !isLoading else { return }
@@ -70,10 +102,9 @@ final class ReportsViewModel {
         defer { isLoading = false }
 
         do {
-            struct Vars: Encodable { let page: Int; let pageSize: Int }
             let response: ReportsResponse = try await client.perform(
                 query: getReportsQuery,
-                variables: Vars(page: 1, pageSize: PAGE_SIZE),
+                variables: makeVars(page: 1),
                 token: token
             )
             items = response.reports.items
@@ -116,10 +147,9 @@ final class ReportsViewModel {
 
         do {
             let nextPage = currentPage + 1
-            struct Vars: Encodable { let page: Int; let pageSize: Int }
             let response: ReportsResponse = try await client.perform(
                 query: getReportsQuery,
-                variables: Vars(page: nextPage, pageSize: PAGE_SIZE),
+                variables: makeVars(page: nextPage),
                 token: token
             )
             items.append(contentsOf: response.reports.items)

@@ -5,26 +5,41 @@ struct ReportsView: View {
     @Environment(AppRouter.self) private var router
     @State private var viewModel = ReportsViewModel()
     @State private var showCreateSheet = false
+    @State private var searchDebounceTask: Task<Void, Never>?
+
+    /// Mirrors the web app: show the search + sort controls whenever there are
+    /// reports to filter, or the user is actively searching (so the field stays
+    /// reachable even when a search yields no matches).
+    private var showsControls: Bool {
+        (viewModel.isLoading || viewModel.error == nil)
+            && (viewModel.totalCount > 0 || viewModel.isSearching)
+    }
 
     var body: some View {
         @Bindable var router = router
         NavigationStack(path: $router.reportsPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    if viewModel.isLoading {
+                    if showsControls {
+                        controls
+                    }
+
+                    if viewModel.isLoading && viewModel.items.isEmpty {
                         Text("00 reports")
                             .font(.subheadline)
                             .redacted(reason: .placeholder)
                             .padding(.horizontal, 4)
                         skeletonSection
-                    } else {
-                        if !viewModel.items.isEmpty {
-                            Text("\(viewModel.totalCount) \(viewModel.totalCount == 1 ? "report" : "reports")")
-                                .font(.subheadline)
-                                .foregroundStyle(AppColors.textSecondary)
-                                .padding(.horizontal, 4)
-                            reportSection
-                        } else if viewModel.error == nil {
+                    } else if !viewModel.items.isEmpty {
+                        Text("\(viewModel.totalCount) \(viewModel.totalCount == 1 ? "report" : "reports")")
+                            .font(.subheadline)
+                            .foregroundStyle(AppColors.textSecondary)
+                            .padding(.horizontal, 4)
+                        reportSection
+                    } else if viewModel.error == nil {
+                        if viewModel.isSearching {
+                            noMatchesState
+                        } else {
                             emptyState
                         }
                     }
@@ -36,6 +51,20 @@ struct ReportsView: View {
             .refreshable {
                 guard let token = auth.token else { return }
                 await viewModel.loadInitial(token: token)
+            }
+            .onChange(of: viewModel.searchText) {
+                searchDebounceTask?.cancel()
+                searchDebounceTask = Task {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard !Task.isCancelled, let token = auth.token else { return }
+                    await viewModel.reload(token: token)
+                }
+            }
+            .onChange(of: viewModel.sortOption) {
+                Task {
+                    guard let token = auth.token else { return }
+                    await viewModel.reload(token: token)
+                }
             }
             .overlay { overlayContent }
             .navigationDestination(for: Report.self) { report in
@@ -63,6 +92,56 @@ struct ReportsView: View {
                 await viewModel.loadInitial(token: token)
             }
         }
+    }
+
+    // MARK: - Search & sort controls
+
+    private var controls: some View {
+        @Bindable var viewModel = viewModel
+        return HStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Search reports…", text: $viewModel.searchText)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                if !viewModel.searchText.isEmpty {
+                    Button {
+                        viewModel.searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(AppColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+
+            Menu {
+                Picker("Sort", selection: $viewModel.sortOption) {
+                    ForEach(ReportSortOption.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
+                }
+            } label: {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44)
+                    .frame(maxHeight: .infinity)
+                    .background(AppColors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        }
+        .padding(.bottom, 4)
     }
 
     // MARK: - List content
@@ -169,6 +248,24 @@ struct ReportsView: View {
                 showCreateSheet = true
             }
             .font(.subheadline.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
+                .foregroundStyle(AppColors.border)
+        )
+    }
+
+    private var noMatchesState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 40))
+                .foregroundStyle(.quaternary)
+            Text("No reports match your search.")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)

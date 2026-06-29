@@ -1,5 +1,40 @@
 import Foundation
 
+// MARK: - Sorting
+
+/// Mirrors the web app's report sort options (`REPORT_SORT_OPTIONS` / `REPORT_SORT_CONFIG`).
+enum ReportSortOption: String, CaseIterable, Identifiable {
+    case newest     = "NEWEST"
+    case netHighLow = "NET_HIGH_LOW"
+    case netLowHigh = "NET_LOW_HIGH"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .newest:     return "Created At"
+        case .netHighLow: return "Net (High–Low)"
+        case .netLowHigh: return "Net (Low–High)"
+        }
+    }
+
+    /// GraphQL `ReportSortField` value.
+    var sortBy: String {
+        switch self {
+        case .newest:                  return "NEWEST"
+        case .netHighLow, .netLowHigh: return "NET_BALANCE"
+        }
+    }
+
+    /// GraphQL `SortOrder` value.
+    var sortOrder: String {
+        switch self {
+        case .newest, .netHighLow: return "DESC"
+        case .netLowHigh:          return "ASC"
+        }
+    }
+}
+
 // MARK: - Date parsing
 
 private func parseServerDate(_ raw: String) -> Date {
