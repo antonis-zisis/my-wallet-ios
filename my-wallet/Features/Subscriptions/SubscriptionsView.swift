@@ -663,7 +663,7 @@ struct SubscriptionsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 16) {
+                VStack(spacing: 16) {
                     if !viewModel.activeSubscriptions.isEmpty {
                         VStack(spacing: 8) {
                             CostSummaryCards(
