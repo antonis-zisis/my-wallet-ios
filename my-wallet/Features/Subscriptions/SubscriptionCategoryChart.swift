@@ -96,28 +96,22 @@ struct SubscriptionCategoryChart: View {
         CardContainer {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 4) {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
-                    } label: {
-                        Text("Spending by category")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
+                    Text("Spending by category")
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
 
                     ChartInfoPopover(message: "Every amount is a monthly equivalent. Yearly and other billing cycles are spread evenly across the year, so each category reflects its true monthly share.")
 
                     Spacer()
 
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
-                    } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                    }
-                    .buttonStyle(.plain)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
                 }
 
                 if isExpanded {

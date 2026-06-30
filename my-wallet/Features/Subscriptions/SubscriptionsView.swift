@@ -65,14 +65,16 @@ private struct SubscriptionRow: View {
 
     @Environment(ThemeManager.self) private var theme
 
-    private var equivalentText: String {
-        guard !theme.hideAmounts else {
-            return subscription.billingCycle == .monthly ? "***/yr" : "***/mo"
+    /// Relative countdown to the next renewal, shown only within the next 30
+    /// days (mirrors the web row).
+    private var renewalRelativeLabel: String? {
+        switch subscription.daysUntilNextRenewal {
+        case ..<0:  return nil
+        case 0:     return "today"
+        case 1:     return "tomorrow"
+        case ..<30: return "in \(subscription.daysUntilNextRenewal)d"
+        default:    return nil
         }
-        if subscription.billingCycle == .monthly {
-            return String(format: "€%.2f/yr", subscription.amount * 12)
-        }
-        return String(format: "€%.2f/mo", subscription.monthlyCost)
     }
 
     var body: some View {
@@ -94,8 +96,10 @@ private struct SubscriptionRow: View {
 
                 HStack(spacing: 6) {
                     Text(subscription.amount.maskedCurrency(hidden: theme.hideAmounts))
-                    Text("·")
-                    Text(equivalentText)
+                    if subscription.billingCycle != .monthly {
+                        Text("·")
+                        Text("≈ \(subscription.monthlyCost.maskedCurrency(hidden: theme.hideAmounts))/mo")
+                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -115,6 +119,8 @@ private struct SubscriptionRow: View {
                             }
                         } else if subscription.isCancelled, let endDate = subscription.formattedEndDate {
                             Text("active until \(Text(endDate).fontWeight(.semibold))")
+                        } else if let relative = renewalRelativeLabel {
+                            Text("next renewal at \(Text(subscription.formattedNextRenewalDate).fontWeight(.semibold)) · \(relative)")
                         } else {
                             Text("next renewal at \(Text(subscription.formattedNextRenewalDate).fontWeight(.semibold))")
                         }
@@ -133,6 +139,31 @@ private struct SubscriptionRow: View {
             Spacer()
         }
         .padding(.vertical, 10)
+    }
+}
+
+// MARK: - Sort menu
+
+private struct SubscriptionSortMenu: View {
+    @Bindable var viewModel: SubscriptionsViewModel
+
+    var body: some View {
+        Menu {
+            Picker("Sort", selection: $viewModel.sortOption) {
+                ForEach(SubscriptionSortOption.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+        } label: {
+            Image(systemName: "arrow.up.arrow.down")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(AppColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+        }
     }
 }
 
@@ -632,7 +663,7 @@ struct SubscriptionsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 16) {
+                VStack(spacing: 16) {
                     if !viewModel.activeSubscriptions.isEmpty {
                         VStack(spacing: 8) {
                             CostSummaryCards(
@@ -756,13 +787,17 @@ struct SubscriptionsView: View {
             emptyActiveState
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Active (\(viewModel.activeSubscriptions.count))")
-                    .padding(.top, 8)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("Active (\(viewModel.activeSubscriptions.count))")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    SubscriptionSortMenu(viewModel: viewModel)
+                }
+                .padding(.top, 8)
                 CardContainer(verticalPadding: 6) {
                 VStack(spacing: 0) {
-                    ForEach(Array(viewModel.activeSubscriptions.enumerated()), id: \.element.id) { index, sub in
+                    ForEach(Array(viewModel.sortedActiveSubscriptions.enumerated()), id: \.element.id) { index, sub in
                         HStack(spacing: 0) {
                             SubscriptionRow(subscription: sub)
                             Menu {
@@ -783,7 +818,7 @@ struct SubscriptionsView: View {
                                     .padding(.leading, 12)
                             }
                         }
-                        if index < viewModel.activeSubscriptions.count - 1 {
+                        if index < viewModel.sortedActiveSubscriptions.count - 1 {
                             Divider()
                         }
                     }

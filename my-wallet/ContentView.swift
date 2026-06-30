@@ -1,10 +1,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    @AppStorage("selectedTab") private var selectedTab = 0
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        @Bindable var router = router
+        TabView(selection: $router.selectedTab) {
             DashboardView()
                 .tabItem {
                     Label("Overview", systemImage: "house.fill")
@@ -29,17 +30,32 @@ struct ContentView: View {
                 }
                 .tag(3)
 
-            NetWorthView()
+            MoreView()
                 .tabItem {
-                    Label("Net Worth", systemImage: "chart.line.uptrend.xyaxis")
+                    Label("More", systemImage: "ellipsis")
                 }
                 .tag(4)
+        }
+    }
+}
 
-            ProfileView()
-                .tabItem {
+private struct MoreView: View {
+    var body: some View {
+        NavigationStack {
+            List {
+                NavigationLink {
+                    NetWorthView()
+                } label: {
+                    Label("Net Worth", systemImage: "chart.line.uptrend.xyaxis")
+                }
+
+                NavigationLink {
+                    ProfileView()
+                } label: {
                     Label("Profile", systemImage: "person.fill")
                 }
-                .tag(5)
+            }
+            .navigationTitle("More")
         }
     }
 }
@@ -48,4 +64,5 @@ struct ContentView: View {
     ContentView()
         .environment(AuthViewModel())
         .environment(ThemeManager())
+        .environment(AppRouter())
 }

@@ -52,6 +52,7 @@ struct DashboardView: View {
 
 private struct ReportSummarySection: View {
     let viewModel: DashboardViewModel
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
         VStack(spacing: 12) {
@@ -67,12 +68,26 @@ private struct ReportSummarySection: View {
                 )
             } else {
                 TotalReportsCard(count: viewModel.totalReportsCount)
-                ReportCard(badge: "Current", report: viewModel.currentReport)
-                ReportCard(badge: "Previous", report: viewModel.previousReport)
+                reportCardLink(badge: "Current", report: viewModel.currentReport)
+                reportCardLink(badge: "Previous", report: viewModel.previousReport)
                 if !viewModel.reportSummaries.isEmpty {
                     IncomeExpensesCard(summaries: viewModel.reportSummaries)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func reportCardLink(badge: String, report: Report?) -> some View {
+        if let report {
+            Button {
+                router.openReport(report)
+            } label: {
+                ReportCard(badge: badge, report: report)
+            }
+            .buttonStyle(.plain)
+        } else {
+            ReportCard(badge: badge, report: report)
         }
     }
 
@@ -343,6 +358,7 @@ private struct ContractsExpiringSoonCard: View {
                             .foregroundStyle(.secondary)
                             .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -480,6 +496,7 @@ private struct NetWorthCard: View {
                             .foregroundStyle(.secondary)
                             .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -618,6 +635,7 @@ private struct IncomeExpensesCard: View {
                             .foregroundStyle(.secondary)
                             .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -833,6 +851,7 @@ private struct UpcomingRenewalsCard: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -967,4 +986,6 @@ private struct AmountRow: View {
 #Preview {
     DashboardView()
         .environment(AuthViewModel())
+        .environment(ThemeManager())
+        .environment(AppRouter())
 }

@@ -175,7 +175,51 @@ final class NetWorthViewModel {
     var totalCount = 0
     var isMutating = false
 
+    var searchText = ""
+    var sortOption: NetWorthSortOption = .date
+
     private let client = GraphQLClient.shared
+
+    /// Snapshots filtered by the search query and ordered by the selected sort
+    /// option. Mirrors the web list controls; the trend chart keeps using the
+    /// full unfiltered `snapshots`.
+    var visibleSnapshots: [NetWorthSnapshot] {
+        var items = snapshots
+
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        if !query.isEmpty {
+            items = items.filter { $0.title.lowercased().contains(query) }
+        }
+
+        switch sortOption {
+        case .date:
+            items.sort { $0.parsedSnapshotDate > $1.parsedSnapshotDate }
+        case .changeHighLow:
+            items.sort { Self.compareByDelta($0, $1, ascending: false) }
+        case .changeLowHigh:
+            items.sort { Self.compareByDelta($0, $1, ascending: true) }
+        }
+
+        return items
+    }
+
+    /// Orders two snapshots by their change in net worth. Snapshots without a
+    /// previous snapshot (no delta) always sort to the bottom, falling back to a
+    /// most-recent-first tie-break.
+    private static func compareByDelta(
+        _ left: NetWorthSnapshot,
+        _ right: NetWorthSnapshot,
+        ascending: Bool
+    ) -> Bool {
+        switch (left.delta, right.delta) {
+        case let (l?, r?):
+            if l == r { return left.parsedSnapshotDate > right.parsedSnapshotDate }
+            return ascending ? l < r : l > r
+        case (nil, _?): return false
+        case (_?, nil): return true
+        case (nil, nil): return left.parsedSnapshotDate > right.parsedSnapshotDate
+        }
+    }
 
     func load(token: String) async {
         guard !isLoading else { return }

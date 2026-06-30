@@ -147,19 +147,19 @@ struct NetWorthDetailView: View {
 
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(snapshot.formattedDate)
+            (Text("Date: ").foregroundStyle(.secondary)
+                + Text(snapshot.formattedDate).foregroundStyle(.primary).fontWeight(.medium))
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
                 CardContainer(verticalPadding: 10, expandHeight: true) {
-                    NetWorthDetailStatColumn(label: "Net Worth", amount: snapshot.netWorth, color: netWorthColor, delta: deltaNetWorth, previousAmount: snapshot.previousSnapshot?.netWorth)
+                    NetWorthDetailStatColumn(label: "Net Worth", amount: snapshot.netWorth, color: netWorthColor, delta: deltaNetWorth)
                 }
                 CardContainer(verticalPadding: 10, expandHeight: true) {
-                    NetWorthDetailStatColumn(label: "Assets", amount: snapshot.totalAssets, color: AppColors.income, delta: deltaAssets, previousAmount: snapshot.previousSnapshot?.totalAssets)
+                    NetWorthDetailStatColumn(label: "Assets", amount: snapshot.totalAssets, color: AppColors.income, delta: deltaAssets)
                 }
                 CardContainer(verticalPadding: 10, expandHeight: true) {
-                    NetWorthDetailStatColumn(label: "Liabilities", amount: snapshot.totalLiabilities, color: AppColors.expense, delta: deltaLiabilities, previousAmount: snapshot.previousSnapshot?.totalLiabilities)
+                    NetWorthDetailStatColumn(label: "Liabilities", amount: snapshot.totalLiabilities, color: AppColors.expense, delta: deltaLiabilities, invertColors: true)
                 }
             }
             .fixedSize(horizontal: false, vertical: true)
@@ -209,69 +209,42 @@ private struct NetWorthDetailStatColumn: View {
     let amount: Double
     let color: Color
     let delta: Double?
-    let previousAmount: Double?
+    var invertColors: Bool = false
 
-    @State private var showPopover = false
     @Environment(ThemeManager.self) private var theme
-
-    private var deltaPercent: Double? {
-        guard let d = delta, let prev = previousAmount, prev != 0 else { return nil }
-        return d / abs(prev) * 100
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 4) {
-                Text(label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                if delta != nil {
-                    Button { showPopover.toggle() } label: {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .popover(isPresented: $showPopover) {
-                        deltaPopover
-                    }
-                }
-            }
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Text(amount.maskedCurrency(hidden: theme.hideAmounts))
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+            if let d = delta, d != 0 {
+                deltaLabel(d)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Inline change vs. the previous snapshot, mirroring the web header card.
+    /// Liabilities invert the colours (an increase in debt is "bad").
     @ViewBuilder
-    private var deltaPopover: some View {
-        if let d = delta {
-            let sign = d >= 0 ? "+" : ""
-            let dColor: Color = d >= 0 ? AppColors.income : AppColors.expense
-            VStack(alignment: .leading, spacing: 4) {
-                Text("vs. previous snapshot")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Group {
-                    if let pct = deltaPercent {
-                        let pctSign = pct >= 0 ? "+" : ""
-                        Text("\(sign)\(d.maskedCurrency(hidden: theme.hideAmounts)) (\(pctSign)\(String(format: "%.1f", pct))%)")
-                    } else {
-                        Text("\(sign)\(d.maskedCurrency(hidden: theme.hideAmounts))")
-                    }
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(dColor)
-                .monospacedDigit()
-            }
-            .padding(12)
-            .presentationCompactAdaptation(.popover)
-        }
+    private func deltaLabel(_ d: Double) -> some View {
+        let isPositive = d > 0
+        let isGood = invertColors ? !isPositive : isPositive
+        let deltaColor: Color = isGood ? AppColors.income : AppColors.expense
+        let sign = isPositive ? "+" : "−"
+        Text("\(sign)\(abs(d).maskedCurrency(hidden: theme.hideAmounts))")
+            .font(.subheadline.weight(.medium).monospacedDigit())
+            .foregroundStyle(deltaColor)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
     }
 }
 
@@ -316,17 +289,15 @@ private struct EntriesSection: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { collapsed.toggle() }
                 } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(title)
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-                            Text(total.maskedCurrency(hidden: theme.hideAmounts))
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(totalColor)
-                                .monospacedDigit()
-                        }
+                    HStack(spacing: 8) {
+                        Text(title)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
                         Spacer()
+                        Text(total.maskedCurrency(hidden: theme.hideAmounts))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(totalColor)
+                            .monospacedDigit()
                         Image(systemName: collapsed ? "chevron.down" : "chevron.up")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
@@ -351,12 +322,14 @@ private struct EntriesSection: View {
     private func categoryCard(category: String, entries: [NetWorthEntry]) -> some View {
         VStack(spacing: 0) {
             Text(category)
-                .font(.caption.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
+                .textCase(.uppercase)
+                .tracking(0.5)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10)
-                .padding(.top, 8)
-                .padding(.bottom, 6)
+                .padding(.vertical, 8)
+                .background(AppColors.surfaceMuted)
 
             ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                 Divider()
@@ -365,7 +338,7 @@ private struct EntriesSection: View {
                     .padding(.vertical, 8)
             }
         }
-        .background(AppColors.surfaceMuted)
+        .background(AppColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
     }

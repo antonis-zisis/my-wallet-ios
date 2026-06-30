@@ -113,7 +113,7 @@ final class ContractsViewModel {
     var isMutating = false
 
     var searchText = ""
-    var sortBy: ContractSortField = .endDate
+    var sortBy: ContractSortField = .provider
 
     private let client = GraphQLClient.shared
 

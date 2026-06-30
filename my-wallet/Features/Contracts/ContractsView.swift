@@ -81,20 +81,19 @@ private struct ContractRow: View {
                     }
                 }
 
-                HStack(spacing: 4) {
-                    if let plan = contract.plan, !plan.isEmpty {
-                        Text(plan)
-                            .layoutPriority(0)
-                        Text("·")
-                            .layoutPriority(1)
-                    }
-                    expiryText
-                        .layoutPriority(1)
+                if let plan = contract.plan, !plan.isEmpty {
+                    Text(plan)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
+
+                expiryText
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
 
             Spacer()

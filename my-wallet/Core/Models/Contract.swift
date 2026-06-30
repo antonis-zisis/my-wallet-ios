@@ -1,15 +1,15 @@
 import Foundation
 
 enum ContractSortField: String, CaseIterable, Identifiable {
-    case endDate  = "END_DATE"
     case provider = "PROVIDER"
+    case endDate  = "END_DATE"
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .endDate:  return "Expiry Date"
         case .provider: return "Provider (A–Z)"
+        case .endDate:  return "Expiry Date"
         }
     }
 }

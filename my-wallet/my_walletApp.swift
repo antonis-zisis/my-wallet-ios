@@ -4,6 +4,7 @@ import SwiftUI
 struct my_walletApp: App {
     @State private var auth = AuthViewModel()
     @State private var theme = ThemeManager()
+    @State private var router = AppRouter()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -11,6 +12,7 @@ struct my_walletApp: App {
             RootView()
                 .environment(auth)
                 .environment(theme)
+                .environment(router)
                 .preferredColorScheme(theme.colorScheme)
                 .task {
                     await auth.initialize()

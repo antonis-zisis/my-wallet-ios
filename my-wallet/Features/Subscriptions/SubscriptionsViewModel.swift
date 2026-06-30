@@ -200,8 +200,26 @@ final class SubscriptionsViewModel {
     var activeError = false
     var inactiveError = false
     var showInactive = false
+    var sortOption: SubscriptionSortOption = .name
 
     var isMutating = false
+
+    /// Active subscriptions ordered by the selected sort option. Mirrors the web
+    /// app, where sorting applies to the active list only.
+    var sortedActiveSubscriptions: [Subscription] {
+        switch sortOption {
+        case .name:
+            return activeSubscriptions.sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+        case .costHighLow:
+            return activeSubscriptions.sorted { $0.monthlyCost > $1.monthlyCost }
+        case .costLowHigh:
+            return activeSubscriptions.sorted { $0.monthlyCost < $1.monthlyCost }
+        case .nextRenewal:
+            return activeSubscriptions.sorted { $0.nextRenewalDate < $1.nextRenewalDate }
+        }
+    }
 
     var totalMonthlyCost: Double {
         activeSubscriptions

@@ -52,6 +52,7 @@ private struct DonutChartCard: View {
                             .foregroundStyle(.secondary)
                             .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
