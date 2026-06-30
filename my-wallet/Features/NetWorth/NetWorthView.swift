@@ -619,49 +619,47 @@ struct NetWorthView: View {
     @State private var snapshotToDelete: NetWorthSnapshot?
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 12) {
-                    if viewModel.isLoading {
-                        loadingPlaceholder
-                            .padding()
-                    } else if viewModel.error {
-                        Text("Failed to load snapshots.")
-                            .font(.subheadline)
-                            .foregroundStyle(.red)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    } else if viewModel.snapshots.isEmpty {
-                        emptyState
-                            .padding()
-                    } else {
-                        VStack(spacing: 12) {
-                            if viewModel.snapshots.count >= 2 {
-                                TrendChartCard(snapshots: viewModel.snapshots)
-                            }
-                            snapshotList
-                        }
+        ScrollView {
+            VStack(spacing: 12) {
+                if viewModel.isLoading {
+                    loadingPlaceholder
                         .padding()
+                } else if viewModel.error {
+                    Text("Failed to load snapshots.")
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                } else if viewModel.snapshots.isEmpty {
+                    emptyState
+                        .padding()
+                } else {
+                    VStack(spacing: 12) {
+                        if viewModel.snapshots.count >= 2 {
+                            TrendChartCard(snapshots: viewModel.snapshots)
+                        }
+                        snapshotList
                     }
+                    .padding()
                 }
             }
-            .background(AppColors.bgApp)
-            .refreshable {
-                guard let token = auth.token else { return }
-                await viewModel.load(token: token)
-            }
-            .navigationTitle("Net Worth")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { sheetMode = .create } label: {
-                        Image(systemName: "plus")
-                    }
+        }
+        .background(AppColors.bgApp)
+        .refreshable {
+            guard let token = auth.token else { return }
+            await viewModel.load(token: token)
+        }
+        .navigationTitle("Net Worth")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { sheetMode = .create } label: {
+                    Image(systemName: "plus")
                 }
             }
-            .task {
-                guard let token = auth.token else { return }
-                await viewModel.load(token: token)
-            }
+        }
+        .task {
+            guard let token = auth.token else { return }
+            await viewModel.load(token: token)
         }
         .sheet(item: $sheetMode) { mode in
             NetWorthSnapshotSheet(

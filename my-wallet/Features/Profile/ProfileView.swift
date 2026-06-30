@@ -7,42 +7,44 @@ struct ProfileView: View {
     @State private var vm = ProfileViewModel()
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    userHeader
-                    personalInfoCard
-                    securityCard
-                    preferencesCard
-                    signOutCard
+        ScrollView {
+            VStack(spacing: 16) {
+                userHeader
+                personalInfoCard
+                changePasswordCard
+                if auth.canUseBiometrics {
+                    biometricCard
                 }
-                .padding()
+                preferencesCard
+                aboutCard
+                signOutCard
             }
-            .background(AppColors.bgApp)
-            .navigationTitle("Profile")
-            .task {
-                guard let token = auth.token else { return }
-                await vm.loadUser(token: token)
-            }
-            .overlay {
-                if vm.isLoading { ProgressView() }
-            }
-            .alert("Error", isPresented: Binding(
-                get: { vm.errorMessage != nil },
-                set: { if !$0 { vm.errorMessage = nil } }
-            )) {
-                Button("OK") { vm.errorMessage = nil }
-            } message: {
-                Text(vm.errorMessage ?? "")
-            }
-            .alert("Success", isPresented: Binding(
-                get: { vm.successMessage != nil },
-                set: { if !$0 { vm.successMessage = nil } }
-            )) {
-                Button("OK") { vm.successMessage = nil }
-            } message: {
-                Text(vm.successMessage ?? "")
-            }
+            .padding()
+        }
+        .background(AppColors.bgApp)
+        .navigationTitle("Profile")
+        .task {
+            guard let token = auth.token else { return }
+            await vm.loadUser(token: token)
+        }
+        .overlay {
+            if vm.isLoading { ProgressView() }
+        }
+        .alert("Error", isPresented: Binding(
+            get: { vm.errorMessage != nil },
+            set: { if !$0 { vm.errorMessage = nil } }
+        )) {
+            Button("OK") { vm.errorMessage = nil }
+        } message: {
+            Text(vm.errorMessage ?? "")
+        }
+        .alert("Success", isPresented: Binding(
+            get: { vm.successMessage != nil },
+            set: { if !$0 { vm.successMessage = nil } }
+        )) {
+            Button("OK") { vm.successMessage = nil }
+        } message: {
+            Text(vm.successMessage ?? "")
         }
     }
 
@@ -73,7 +75,6 @@ struct ProfileView: View {
             Spacer()
         }
         .padding(.horizontal, 4)
-        .padding(.top, 4)
     }
 
     // MARK: - Cards
@@ -127,10 +128,10 @@ struct ProfileView: View {
         }
     }
 
-    private var securityCard: some View {
+    private var changePasswordCard: some View {
         CardContainer {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Security")
+                Text("Change Password")
                     .font(.headline)
                     .padding(.bottom, 16)
 
@@ -166,14 +167,20 @@ struct ProfileView: View {
                     .font(.body.weight(.medium))
                 }
                 .disabled(vm.newPassword.isEmpty || vm.confirmPassword.isEmpty || vm.isSavingPassword)
+            }
+        }
+    }
 
-                if auth.canUseBiometrics {
-                    Divider().padding(.vertical, 12)
+    private var biometricCard: some View {
+        CardContainer {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Face ID")
+                    .font(.headline)
+                    .padding(.bottom, 16)
 
-                    @Bindable var auth = auth
-                    Toggle(isOn: $auth.biometricLockEnabled) {
-                        Label("Require Face ID", systemImage: "faceid")
-                    }
+                @Bindable var auth = auth
+                Toggle(isOn: $auth.biometricLockEnabled) {
+                    Label("Require Face ID", systemImage: "faceid")
                 }
             }
         }
@@ -209,6 +216,37 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+
+    private var aboutCard: some View {
+        CardContainer {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("About")
+                    .font(.headline)
+                    .padding(.bottom, 16)
+
+                HStack {
+                    Text("Version")
+                        .font(.subheadline.weight(.medium))
+                    Spacer()
+                    Text("v\(appVersion)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Divider().padding(.vertical, 12)
+
+                Text("Subscription logos provided by ")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                + Text("[Logo.dev](https://logo.dev)")
+                    .font(.caption)
+            }
+        }
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     }
 
     private var signOutCard: some View {

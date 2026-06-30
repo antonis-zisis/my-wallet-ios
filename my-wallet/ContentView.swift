@@ -30,17 +30,32 @@ struct ContentView: View {
                 }
                 .tag(3)
 
-            NetWorthView()
+            MoreView()
                 .tabItem {
-                    Label("Net Worth", systemImage: "chart.line.uptrend.xyaxis")
+                    Label("More", systemImage: "ellipsis")
                 }
                 .tag(4)
+        }
+    }
+}
 
-            ProfileView()
-                .tabItem {
+private struct MoreView: View {
+    var body: some View {
+        NavigationStack {
+            List {
+                NavigationLink {
+                    NetWorthView()
+                } label: {
+                    Label("Net Worth", systemImage: "chart.line.uptrend.xyaxis")
+                }
+
+                NavigationLink {
+                    ProfileView()
+                } label: {
                     Label("Profile", systemImage: "person.fill")
                 }
-                .tag(5)
+            }
+            .navigationTitle("More")
         }
     }
 }
