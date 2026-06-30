@@ -1,5 +1,22 @@
 import Foundation
 
+/// Mirrors the web app's net worth sort options (`NET_WORTH_SORT_OPTIONS`).
+enum NetWorthSortOption: String, CaseIterable, Identifiable {
+    case date          = "DATE"
+    case changeHighLow = "CHANGE_HIGH_LOW"
+    case changeLowHigh = "CHANGE_LOW_HIGH"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .date:          return "Created At"
+        case .changeHighLow: return "Change (High–Low)"
+        case .changeLowHigh: return "Change (Low–High)"
+        }
+    }
+}
+
 struct NetWorthEntryRef: Decodable {
     let type: String
     let label: String
@@ -33,6 +50,13 @@ struct NetWorthSnapshot: Decodable, Identifiable {
     let updatedAt: String?
     let entries: [NetWorthEntry]?
     let previousSnapshot: PreviousNetWorthSnapshot?
+
+    /// Change in net worth relative to the previous snapshot, or `nil` when
+    /// there is no prior snapshot to compare against.
+    var delta: Double? {
+        guard let prev = previousSnapshot?.netWorth else { return nil }
+        return netWorth - prev
+    }
 
     var formattedDate: String {
         parsedSnapshotDate.formatted(date: .abbreviated, time: .omitted)

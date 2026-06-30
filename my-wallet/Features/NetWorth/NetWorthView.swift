@@ -638,7 +638,12 @@ struct NetWorthView: View {
                         if viewModel.snapshots.count >= 2 {
                             TrendChartCard(snapshots: viewModel.snapshots)
                         }
-                        snapshotList
+                        controls
+                        if viewModel.visibleSnapshots.isEmpty {
+                            noMatchesState
+                        } else {
+                            snapshotList
+                        }
                     }
                     .padding()
                 }
@@ -691,10 +696,46 @@ struct NetWorthView: View {
 
     // MARK: - Subviews
 
+    private var controls: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Search snapshots…", text: $viewModel.searchText)
+                    .autocorrectionDisabled()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(AppColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+
+            Menu {
+                Picker("Sort", selection: $viewModel.sortOption) {
+                    ForEach(NetWorthSortOption.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
+                }
+            } label: {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44)
+                    .frame(maxHeight: .infinity)
+                    .background(AppColors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
     private var snapshotList: some View {
         CardContainer(verticalPadding: 4) {
             VStack(spacing: 0) {
-                ForEach(Array(viewModel.snapshots.enumerated()), id: \.element.id) { index, snapshot in
+                let snapshots = viewModel.visibleSnapshots
+                ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
                     NavigationLink {
                         NetWorthDetailView(stub: snapshot, viewModel: viewModel)
                     } label: {
@@ -706,12 +747,30 @@ struct NetWorthView: View {
                             snapshotToDelete = snapshot
                         }
                     }
-                    if index < viewModel.snapshots.count - 1 {
+                    if index < snapshots.count - 1 {
                         Divider()
                     }
                 }
             }
         }
+    }
+
+    private var noMatchesState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 40))
+                .foregroundStyle(.quaternary)
+            Text("No snapshots match your search.")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
+                .foregroundStyle(AppColors.border)
+        )
     }
 
     private var emptyState: some View {
