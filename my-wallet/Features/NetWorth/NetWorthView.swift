@@ -591,6 +591,7 @@ private struct SnapshotRow: View {
                 .padding(.leading, 8)
         }
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
     }
 
     private var netWorthText: Text {
