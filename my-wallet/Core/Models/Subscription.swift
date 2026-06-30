@@ -28,6 +28,25 @@ enum BillingCycle: String, Codable, CaseIterable {
     }
 }
 
+/// Mirrors the web app's subscription sort options (`SUBSCRIPTION_SORT_OPTIONS`).
+enum SubscriptionSortOption: String, CaseIterable, Identifiable {
+    case name        = "NAME"
+    case costHighLow = "COST_HIGH_LOW"
+    case costLowHigh = "COST_LOW_HIGH"
+    case nextRenewal = "NEXT_RENEWAL"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .name:        return "Name (A–Z)"
+        case .costHighLow: return "Cost (High–Low)"
+        case .costLowHigh: return "Cost (Low–High)"
+        case .nextRenewal: return "Next Renewal"
+        }
+    }
+}
+
 enum SubscriptionCategory: String, CaseIterable, Identifiable {
     case entertainment = "Entertainment"
     case productivity  = "Productivity"

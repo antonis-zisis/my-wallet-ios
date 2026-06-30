@@ -136,6 +136,31 @@ private struct SubscriptionRow: View {
     }
 }
 
+// MARK: - Sort menu
+
+private struct SubscriptionSortMenu: View {
+    @Bindable var viewModel: SubscriptionsViewModel
+
+    var body: some View {
+        Menu {
+            Picker("Sort", selection: $viewModel.sortOption) {
+                ForEach(SubscriptionSortOption.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+        } label: {
+            Image(systemName: "arrow.up.arrow.down")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(AppColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(AppColors.border, lineWidth: 1))
+        }
+    }
+}
+
 // MARK: - Info popover
 
 private struct InfoPopover: View {
@@ -756,13 +781,17 @@ struct SubscriptionsView: View {
             emptyActiveState
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Active (\(viewModel.activeSubscriptions.count))")
-                    .padding(.top, 8)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("Active (\(viewModel.activeSubscriptions.count))")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    SubscriptionSortMenu(viewModel: viewModel)
+                }
+                .padding(.top, 8)
                 CardContainer(verticalPadding: 6) {
                 VStack(spacing: 0) {
-                    ForEach(Array(viewModel.activeSubscriptions.enumerated()), id: \.element.id) { index, sub in
+                    ForEach(Array(viewModel.sortedActiveSubscriptions.enumerated()), id: \.element.id) { index, sub in
                         HStack(spacing: 0) {
                             SubscriptionRow(subscription: sub)
                             Menu {
@@ -783,7 +812,7 @@ struct SubscriptionsView: View {
                                     .padding(.leading, 12)
                             }
                         }
-                        if index < viewModel.activeSubscriptions.count - 1 {
+                        if index < viewModel.sortedActiveSubscriptions.count - 1 {
                             Divider()
                         }
                     }
