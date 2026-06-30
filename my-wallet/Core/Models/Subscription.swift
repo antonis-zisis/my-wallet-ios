@@ -113,6 +113,15 @@ struct Subscription: Decodable, Identifiable {
         nextRenewalDate.formatted(date: .abbreviated, time: .omitted)
     }
 
+    var daysUntilNextRenewal: Int {
+        let calendar = Calendar.current
+        return calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: Date()),
+            to: calendar.startOfDay(for: nextRenewalDate)
+        ).day ?? 0
+    }
+
     var formattedEndDate: String? {
         guard let endDate else { return nil }
         return Self.parseDate(endDate).formatted(date: .abbreviated, time: .omitted)
