@@ -261,15 +261,15 @@ private struct EntriesSection: View {
     @Environment(ThemeManager.self) private var theme
 
     private var groupedEntries: [(category: String, entries: [NetWorthEntry])] {
-        var seen = Set<String>()
-        var categories = [String]()
-        for entry in entries {
-            if seen.insert(entry.category).inserted {
-                categories.append(entry.category)
-            }
-        }
         let grouped = Dictionary(grouping: entries) { $0.category }
-        return categories.map { (category: $0, entries: grouped[$0] ?? []) }
+        return grouped.keys
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+            .map { category in
+                let sortedEntries = (grouped[category] ?? []).sorted {
+                    $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending
+                }
+                return (category: category, entries: sortedEntries)
+            }
     }
 
     private func delta(for entry: NetWorthEntry) -> Double? {
@@ -350,39 +350,51 @@ private struct EntriesSection: View {
         let pct = total > 0 ? entry.amount / total * 100 : 0
 
         HStack {
-            HStack(spacing: 6) {
-                Text(entry.label)
-                    .font(.subheadline.weight(.medium))
-                if entryIsNew {
-                    Text("New")
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(AppColors.income.opacity(0.15))
-                        .foregroundStyle(AppColors.income)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(entry.label)
+                        .font(.subheadline.weight(.medium))
+                    if entryIsNew {
+                        Text("New")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(AppColors.income.opacity(0.15))
+                            .foregroundStyle(AppColors.income)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                }
+                if let notes = entry.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(2)
                 }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(String(format: "%.1f%%", pct))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                     Text(entry.amount.maskedCurrency(hidden: theme.hideAmounts))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(totalColor)
                         .monospacedDigit()
+                    Text("· \(String(format: "%.1f%%", pct))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                if let d = entryDelta, !entryIsNew {
+                if let d = entryDelta, !entryIsNew, d != 0 {
                     let deltaColor = d >= 0 ? AppColors.income : AppColors.expense
-                    let sign = d >= 0 ? "+" : ""
-                    HStack(spacing: 2) {
-                        Image(systemName: d >= 0 ? "arrow.up" : "arrow.down")
-                            .font(.system(size: 8, weight: .bold))
-                        Text("\(sign)\(d.maskedCurrency(hidden: theme.hideAmounts))")
-                            .font(.caption2.monospacedDigit())
+                    let sign = d >= 0 ? "+" : "−"
+                    let previous = entry.amount - d
+                    let pctChange: Double? = previous != 0 ? d / abs(previous) * 100 : nil
+                    Group {
+                        if let pc = pctChange {
+                            Text("\(sign)\(abs(d).maskedCurrency(hidden: theme.hideAmounts)) (\(sign)\(String(format: "%.1f", abs(pc)))%)")
+                        } else {
+                            Text("\(sign)\(abs(d).maskedCurrency(hidden: theme.hideAmounts))")
+                        }
                     }
+                    .font(.caption2.monospacedDigit())
                     .foregroundStyle(deltaColor)
                 }
             }
