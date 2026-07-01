@@ -166,7 +166,7 @@ struct UpdateNetWorthSnapshotInput: Encodable {
 
 // MARK: - Categories
 
-let assetCategories = ["Savings", "Investments", "Real Estate", "Vehicle", "Other"]
+let assetCategories = ["Savings", "Investments", "Brokerage", "Retirement", "Crypto", "Real Estate", "Vehicle", "Other"]
 let liabilityCategories = ["Mortgage", "Car Loan", "Student Loan", "Credit Card", "Personal Loan", "Other"]
 
 // MARK: - ViewModel
