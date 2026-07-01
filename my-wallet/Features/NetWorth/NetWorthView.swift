@@ -25,13 +25,15 @@ struct NetWorthEntryDraft: Identifiable {
     var category: String
     var label: String
     var amount: String
+    var notes: String
     var isExpanded: Bool
 
-    init(type: String = "ASSET", category: String? = nil, label: String = "", amount: String = "", isExpanded: Bool = true) {
+    init(type: String = "ASSET", category: String? = nil, label: String = "", amount: String = "", notes: String = "", isExpanded: Bool = true) {
         self.type = type
         self.category = category ?? (type == "ASSET" ? assetCategories[0] : liabilityCategories[0])
         self.label = label
         self.amount = amount
+        self.notes = notes
         self.isExpanded = isExpanded
     }
 }
@@ -66,13 +68,13 @@ struct NetWorthSnapshotSheet: View {
             _title = State(initialValue: snapshot.title)
             _snapshotDate = State(initialValue: snapshot.parsedSnapshotDate)
             _entries = State(initialValue: (snapshot.entries ?? []).map {
-                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount), isExpanded: false)
+                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount), notes: $0.notes ?? "", isExpanded: false)
             })
         case .duplicate(let snapshot):
             _title = State(initialValue: "")
             _snapshotDate = State(initialValue: Date())
             _entries = State(initialValue: (snapshot.entries ?? []).map {
-                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount), isExpanded: false)
+                NetWorthEntryDraft(type: $0.type, category: $0.category, label: $0.label, amount: Self.formatAmount($0.amount), notes: $0.notes ?? "", isExpanded: false)
             })
         }
     }
@@ -118,13 +120,13 @@ struct NetWorthSnapshotSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    fieldGroup(label: "Title") {
+                    fieldGroup(label: "Snapshot Title") {
                         TextField("e.g. February 2026", text: $title)
                             .autocorrectionDisabled()
                             .styledInput()
                     }
 
-                    fieldGroup(label: "Snapshot Date") {
+                    fieldGroup(label: "Date") {
                         DatePicker("", selection: $snapshotDate, displayedComponents: .date)
                             .datePickerStyle(.compact)
                             .labelsHidden()
@@ -247,6 +249,20 @@ struct NetWorthSnapshotSheet: View {
                 Divider()
 
                 HStack {
+                    Text("Notes")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    TextField("e.g. 52 shares", text: entry.notes)
+                        .autocorrectionDisabled()
+                        .multilineTextAlignment(.trailing)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+
+                Divider()
+
+                HStack {
                     Text("Amount")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -345,7 +361,10 @@ struct NetWorthSnapshotSheet: View {
                 type: $0.type,
                 label: $0.label.trimmingCharacters(in: .whitespaces),
                 amount: Double($0.amount) ?? 0,
-                category: $0.category
+                category: $0.category,
+                notes: $0.notes.trimmingCharacters(in: .whitespaces).isEmpty
+                    ? nil
+                    : $0.notes.trimmingCharacters(in: .whitespaces)
             )
         }
         switch mode {

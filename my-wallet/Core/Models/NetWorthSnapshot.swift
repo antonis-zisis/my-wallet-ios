@@ -22,6 +22,7 @@ struct NetWorthEntryRef: Decodable {
     let label: String
     let amount: Double
     let category: String
+    let notes: String?
 }
 
 struct PreviousNetWorthSnapshot: Decodable {
@@ -37,6 +38,7 @@ struct NetWorthEntry: Decodable, Identifiable {
     let label: String
     let amount: Double
     let category: String
+    let notes: String?
 }
 
 struct NetWorthSnapshot: Decodable, Identifiable {

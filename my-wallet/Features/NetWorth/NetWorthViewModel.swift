@@ -37,6 +37,7 @@ private let getNetWorthSnapshotQuery = """
         label
         amount
         category
+        notes
       }
       previousSnapshot {
         totalAssets
@@ -47,6 +48,7 @@ private let getNetWorthSnapshotQuery = """
           label
           amount
           category
+          notes
         }
       }
       createdAt
@@ -87,6 +89,7 @@ private let updateNetWorthSnapshotMutation = """
         label
         amount
         category
+        notes
       }
       previousSnapshot {
         totalAssets
@@ -97,6 +100,7 @@ private let updateNetWorthSnapshotMutation = """
           label
           amount
           category
+          notes
         }
       }
       createdAt
@@ -145,6 +149,7 @@ struct NetWorthEntryInput: Encodable {
     let label: String
     let amount: Double
     let category: String
+    let notes: String?
 }
 
 struct CreateNetWorthSnapshotInput: Encodable {
