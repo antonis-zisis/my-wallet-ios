@@ -10,6 +10,14 @@ private let getReportQuery = """
       isLocked
       createdAt
       updatedAt
+      myRole
+      members {
+        id
+        userId
+        email
+        fullName
+        role
+      }
       transactions {
         id
         reportId
@@ -20,22 +28,6 @@ private let getReportQuery = """
         date
         createdAt
         updatedAt
-      }
-    }
-  }
-"""
-
-private let getReportSharingQuery = """
-  query GetReportSharing($id: ID!) {
-    report(id: $id) {
-      id
-      myRole
-      members {
-        email
-        fullName
-        id
-        role
-        userId
       }
     }
   }
@@ -176,8 +168,6 @@ private struct CreateTransactionResponse: Decodable { let createTransaction: Tra
 private struct UpdateTransactionResponse: Decodable { let updateTransaction: Transaction }
 private struct DeleteTransactionResponse: Decodable { let deleteTransaction: Bool }
 
-private struct SharingInfo: Decodable { let id: String; let myRole: ReportRole?; let members: [ReportMember]? }
-private struct ReportSharingResponse: Decodable { let report: SharingInfo? }
 private struct ReportMembersResult: Decodable { let id: String; let members: [ReportMember] }
 private struct ShareReportResponse: Decodable { let shareReport: ReportMembersResult }
 private struct UpdateShareRoleResponse: Decodable { let updateReportShareRole: ReportMembersResult }
@@ -209,28 +199,8 @@ final class ReportDetailViewModel {
                 token: token
             )
             report = response.report
-            Task { await loadSharingInfo(id: id, token: token) }
         } catch {
             self.error = error.localizedDescription
-        }
-    }
-
-    func loadSharingInfo(id: String, token: String) async {
-        guard report != nil else { return }
-        do {
-            struct Vars: Encodable { let id: String }
-            let response: ReportSharingResponse = try await client.perform(
-                query: getReportSharingQuery,
-                variables: Vars(id: id),
-                token: token
-            )
-            if let info = response.report, var r = report {
-                r.myRole = info.myRole
-                r.members = info.members
-                report = r
-            }
-        } catch {
-            // Server may not support sharing yet — fail silently
         }
     }
 

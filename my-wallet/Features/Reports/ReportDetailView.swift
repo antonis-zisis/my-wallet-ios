@@ -927,10 +927,6 @@ private struct ShareReportSheet: View {
             .background(AppColors.bgApp)
             .navigationTitle(isOwner ? "Share Report" : "Report Members")
             .navigationBarTitleDisplayMode(.inline)
-            .task {
-                guard let token = auth.token else { return }
-                await viewModel.loadSharingInfo(id: reportStub.id, token: token)
-            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
