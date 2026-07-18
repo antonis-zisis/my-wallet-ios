@@ -1,5 +1,37 @@
 import Foundation
 
+// MARK: - Report Role & Member
+
+enum ReportRole: String, Decodable, CaseIterable {
+    case owner = "OWNER"
+    case editor = "EDITOR"
+    case viewer = "VIEWER"
+
+    var label: String {
+        switch self {
+        case .owner: return "Owner"
+        case .editor: return "Can edit"
+        case .viewer: return "Can view"
+        }
+    }
+}
+
+struct ReportMember: Decodable, Identifiable {
+    let id: String
+    let userId: String
+    let email: String
+    let fullName: String?
+    let role: ReportRole
+
+    var displayName: String { fullName ?? email }
+
+    var initials: String {
+        let parts = displayName.split(separator: " ").prefix(2)
+        let result = parts.map { String($0.prefix(1)) }.joined().uppercased()
+        return result.isEmpty ? "?" : result
+    }
+}
+
 // MARK: - Sorting
 
 /// Mirrors the web app's report sort options (`REPORT_SORT_OPTIONS` / `REPORT_SORT_CONFIG`).
@@ -59,6 +91,11 @@ struct Report: Decodable, Identifiable {
     let createdAt: String
     var updatedAt: String
     var transactions: [Transaction]?
+    var members: [ReportMember]?
+    var myRole: ReportRole?
+
+    var isOwner: Bool { myRole == .owner || myRole == nil }
+    var canEdit: Bool { myRole != .viewer }
 
     var totalIncome: Double {
         (transactions ?? [])

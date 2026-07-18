@@ -25,6 +25,22 @@ private let getReportQuery = """
   }
 """
 
+private let getReportSharingQuery = """
+  query GetReportSharing($id: ID!) {
+    report(id: $id) {
+      id
+      myRole
+      members {
+        email
+        fullName
+        id
+        role
+        userId
+      }
+    }
+  }
+"""
+
 private let updateReportMutation = """
   mutation UpdateReport($input: UpdateReportInput!) {
     updateReport(input: $input) {
@@ -97,6 +113,57 @@ private let deleteTransactionMutation = """
   }
 """
 
+private let shareReportMutation = """
+  mutation ShareReport($input: ShareReportInput!) {
+    shareReport(input: $input) {
+      id
+      members {
+        email
+        fullName
+        id
+        role
+        userId
+      }
+    }
+  }
+"""
+
+private let updateReportShareRoleMutation = """
+  mutation UpdateReportShareRole($input: UpdateReportShareRoleInput!) {
+    updateReportShareRole(input: $input) {
+      id
+      members {
+        email
+        fullName
+        id
+        role
+        userId
+      }
+    }
+  }
+"""
+
+private let unshareReportMutation = """
+  mutation UnshareReport($id: ID!) {
+    unshareReport(id: $id) {
+      id
+      members {
+        email
+        fullName
+        id
+        role
+        userId
+      }
+    }
+  }
+"""
+
+private let leaveSharedReportMutation = """
+  mutation LeaveSharedReport($reportId: ID!) {
+    leaveSharedReport(reportId: $reportId)
+  }
+"""
+
 // MARK: - Response types
 
 private struct ReportResponse: Decodable { let report: Report? }
@@ -108,6 +175,14 @@ private struct UnlockReportResponse: Decodable { let unlockReport: LockResult }
 private struct CreateTransactionResponse: Decodable { let createTransaction: Transaction }
 private struct UpdateTransactionResponse: Decodable { let updateTransaction: Transaction }
 private struct DeleteTransactionResponse: Decodable { let deleteTransaction: Bool }
+
+private struct SharingInfo: Decodable { let id: String; let myRole: ReportRole?; let members: [ReportMember]? }
+private struct ReportSharingResponse: Decodable { let report: SharingInfo? }
+private struct ReportMembersResult: Decodable { let id: String; let members: [ReportMember] }
+private struct ShareReportResponse: Decodable { let shareReport: ReportMembersResult }
+private struct UpdateShareRoleResponse: Decodable { let updateReportShareRole: ReportMembersResult }
+private struct UnshareReportResponse: Decodable { let unshareReport: ReportMembersResult }
+private struct LeaveSharedReportResponse: Decodable { let leaveSharedReport: Bool }
 
 // MARK: - ViewModel
 
@@ -134,8 +209,28 @@ final class ReportDetailViewModel {
                 token: token
             )
             report = response.report
+            Task { await loadSharingInfo(id: id, token: token) }
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+
+    func loadSharingInfo(id: String, token: String) async {
+        guard report != nil else { return }
+        do {
+            struct Vars: Encodable { let id: String }
+            let response: ReportSharingResponse = try await client.perform(
+                query: getReportSharingQuery,
+                variables: Vars(id: id),
+                token: token
+            )
+            if let info = response.report, var r = report {
+                r.myRole = info.myRole
+                r.members = info.members
+                report = r
+            }
+        } catch {
+            // Server may not support sharing yet — fail silently
         }
     }
 
@@ -231,5 +326,46 @@ final class ReportDetailViewModel {
             updated.transactions = updated.transactions?.filter { $0.id != id }
             report = updated
         }
+    }
+
+    func shareReport(reportId: String, email: String, role: ReportRole, token: String) async throws {
+        struct Input: Encodable { let reportId: String; let email: String; let role: String }
+        struct Vars: Encodable { let input: Input }
+        let response: ShareReportResponse = try await client.perform(
+            query: shareReportMutation,
+            variables: Vars(input: Input(reportId: reportId, email: email, role: role.rawValue)),
+            token: token
+        )
+        if var r = report { r.members = response.shareReport.members; report = r }
+    }
+
+    func updateMemberRole(shareId: String, role: ReportRole, token: String) async throws {
+        struct Input: Encodable { let id: String; let role: String }
+        struct Vars: Encodable { let input: Input }
+        let response: UpdateShareRoleResponse = try await client.perform(
+            query: updateReportShareRoleMutation,
+            variables: Vars(input: Input(id: shareId, role: role.rawValue)),
+            token: token
+        )
+        if var r = report { r.members = response.updateReportShareRole.members; report = r }
+    }
+
+    func unshareReport(shareId: String, token: String) async throws {
+        struct Vars: Encodable { let id: String }
+        let response: UnshareReportResponse = try await client.perform(
+            query: unshareReportMutation,
+            variables: Vars(id: shareId),
+            token: token
+        )
+        if var r = report { r.members = response.unshareReport.members; report = r }
+    }
+
+    func leaveSharedReport(reportId: String, token: String) async throws {
+        struct Vars: Encodable { let reportId: String }
+        let _: LeaveSharedReportResponse = try await client.perform(
+            query: leaveSharedReportMutation,
+            variables: Vars(reportId: reportId),
+            token: token
+        )
     }
 }

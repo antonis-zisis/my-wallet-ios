@@ -48,6 +48,7 @@ struct ReportDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ReportDetailViewModel()
     @State private var showRenameSheet = false
+    @State private var showShareSheet = false
     @State private var showDeleteConfirm = false
     @State private var isPerformingAction = false
     @State private var transactionFormMode: TransactionFormMode? = nil
@@ -102,6 +103,12 @@ struct ReportDetailView: View {
                 onUpdate?(updatedReport)
             }
         }
+        .sheet(isPresented: $showShareSheet) {
+            ShareReportSheet(reportStub: report, viewModel: viewModel) {
+                onDelete?()
+                dismiss()
+            }
+        }
         .sheet(item: $transactionFormMode) { mode in
             TransactionFormSheet(mode: mode, viewModel: viewModel)
         }
@@ -149,20 +156,29 @@ struct ReportDetailView: View {
                 ProgressView()
             } else if !viewModel.isLoading {
                 Menu {
-                    if !report.isLocked {
+                    if !report.isLocked && report.canEdit {
                         Button("Rename Report", systemImage: "pencil") {
                             showRenameSheet = true
                         }
-                        Button("Lock Report", systemImage: "lock") {
-                            Task { await performLock() }
+                    }
+                    if report.isOwner {
+                        if report.isLocked {
+                            Button("Unlock Report", systemImage: "lock.open") {
+                                Task { await performUnlock() }
+                            }
+                        } else {
+                            Button("Lock Report", systemImage: "lock") {
+                                Task { await performLock() }
+                            }
                         }
+                    }
+                    Button(report.isOwner ? "Share Report" : "Members", systemImage: "person.2") {
+                        showShareSheet = true
+                    }
+                    if report.isOwner && !report.isLocked {
                         Divider()
                         Button("Delete Report", systemImage: "trash", role: .destructive) {
                             showDeleteConfirm = true
-                        }
-                    } else {
-                        Button("Unlock Report", systemImage: "lock.open") {
-                            Task { await performUnlock() }
                         }
                     }
                 } label: {
@@ -871,6 +887,318 @@ private extension View {
             .background(AppColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: 4))
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(AppColors.border, lineWidth: 1))
+    }
+}
+
+// MARK: - Share Report Sheet
+
+private struct ShareReportSheet: View {
+    let reportStub: Report
+    let viewModel: ReportDetailViewModel
+    var onLeft: (() -> Void)? = nil
+
+    @Environment(AuthViewModel.self) private var auth
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var email = ""
+    @State private var selectedRole: ReportRole = .viewer
+    @State private var isSharing = false
+    @State private var isLeaving = false
+    @State private var error: String?
+
+    private var liveReport: Report { viewModel.report ?? reportStub }
+    private var members: [ReportMember] { liveReport.members ?? [] }
+    private var isOwner: Bool { liveReport.isOwner }
+    private var currentUserEmail: String? { auth.email }
+    private var trimmedEmail: String { email.trimmingCharacters(in: .whitespaces) }
+    private var isEmailValid: Bool { trimmedEmail.contains("@") }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    if isOwner {
+                        shareForm
+                    }
+                    membersList
+                }
+                .padding(20)
+            }
+            .background(AppColors.bgApp)
+            .navigationTitle(isOwner ? "Share Report" : "Report Members")
+            .navigationBarTitleDisplayMode(.inline)
+            .task {
+                guard let token = auth.token else { return }
+                await viewModel.loadSharingInfo(id: reportStub.id, token: token)
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if !isOwner {
+                    Button(role: .destructive) {
+                        Task { await leaveReport() }
+                    } label: {
+                        Group {
+                            if isLeaving {
+                                ProgressView()
+                            } else {
+                                Text("Leave Report")
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                    }
+                    .background(AppColors.surface)
+                    .overlay(Rectangle().frame(height: 1).foregroundStyle(AppColors.border), alignment: .top)
+                }
+            }
+        }
+    }
+
+    // MARK: - Share form (owner only)
+
+    private var shareForm: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Invite by email")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(AppColors.textSecondary)
+
+            HStack(spacing: 8) {
+                TextField("name@example.com", text: $email)
+                    .keyboardType(.emailAddress)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .styledInput()
+
+                Menu {
+                    Picker("Role", selection: $selectedRole) {
+                        Text("Can view").tag(ReportRole.viewer)
+                        Text("Can edit").tag(ReportRole.editor)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(selectedRole == .viewer ? "Can view" : "Can edit")
+                            .font(.subheadline)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption2)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                    .background(AppColors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(AppColors.border, lineWidth: 1))
+                    .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    Task { await share() }
+                } label: {
+                    Group {
+                        if isSharing {
+                            ProgressView()
+                        } else {
+                            Text("Share")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .frame(width: 58)
+                    .padding(.vertical, 10)
+                    .background(isEmailValid ? Color.accentColor : AppColors.surfaceMuted)
+                    .foregroundStyle(isEmailValid ? .white : AppColors.textTertiary)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .disabled(!isEmailValid || isSharing)
+            }
+
+            if let error {
+                Text(error)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+            }
+
+            Divider()
+        }
+    }
+
+    // MARK: - Members list
+
+    private var membersList: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Members")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(AppColors.textSecondary)
+
+            if members.isEmpty {
+                CardContainer {
+                    Text("No members yet")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 4)
+                }
+            } else {
+                CardContainer {
+                    VStack(spacing: 0) {
+                        ForEach(Array(members.enumerated()), id: \.element.id) { index, member in
+                            if index > 0 { Divider() }
+                            MemberRow(
+                                member: member,
+                                isCurrentUser: member.email == currentUserEmail,
+                                isOwnerView: isOwner,
+                                onUpdateRole: { role in
+                                    Task { await updateRole(shareId: member.id, role: role) }
+                                },
+                                onRemove: {
+                                    Task { await removeMember(shareId: member.id) }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func share() async {
+        guard let token = auth.token else { return }
+        isSharing = true
+        error = nil
+        defer { isSharing = false }
+        do {
+            try await viewModel.shareReport(reportId: reportStub.id, email: trimmedEmail, role: selectedRole, token: token)
+            email = ""
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func updateRole(shareId: String, role: ReportRole) async {
+        guard let token = auth.token else { return }
+        do {
+            try await viewModel.updateMemberRole(shareId: shareId, role: role, token: token)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func removeMember(shareId: String) async {
+        guard let token = auth.token else { return }
+        do {
+            try await viewModel.unshareReport(shareId: shareId, token: token)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func leaveReport() async {
+        guard let token = auth.token else { return }
+        isLeaving = true
+        defer { isLeaving = false }
+        do {
+            try await viewModel.leaveSharedReport(reportId: reportStub.id, token: token)
+            dismiss()
+            onLeft?()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - Member Row
+
+private struct MemberRow: View {
+    let member: ReportMember
+    let isCurrentUser: Bool
+    let isOwnerView: Bool
+    let onUpdateRole: (ReportRole) -> Void
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            memberAvatar
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(member.displayName)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                    if isCurrentUser {
+                        Text("(You)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if member.fullName != nil {
+                    Text(member.email)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+
+            if isOwnerView && member.role != .owner {
+                HStack(spacing: 2) {
+                    Menu {
+                        Picker("Role", selection: Binding(
+                            get: { member.role },
+                            set: { onUpdateRole($0) }
+                        )) {
+                            Text("Can view").tag(ReportRole.viewer)
+                            Text("Can edit").tag(ReportRole.editor)
+                        }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text(member.role.label)
+                                .font(.caption)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(AppColors.surfaceMuted)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onRemove) {
+                        Image(systemName: "xmark")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(6)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                Text(member.role.label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    private var memberAvatar: some View {
+        ZStack {
+            Circle()
+                .fill(Color.accentColor.opacity(0.12))
+                .frame(width: 36, height: 36)
+            Text(member.initials)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+        }
     }
 }
 
