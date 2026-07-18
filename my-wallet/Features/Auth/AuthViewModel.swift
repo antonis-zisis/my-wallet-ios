@@ -16,6 +16,7 @@ final class AuthViewModel {
 
     var isAuthenticated: Bool { session != nil }
     var token: String? { session?.accessToken }
+    var email: String? { session?.user.email }
     var canUseBiometrics: Bool { biometrics.canUseBiometrics }
 
     /// Called once at app launch. Listens to the Supabase auth state stream for the

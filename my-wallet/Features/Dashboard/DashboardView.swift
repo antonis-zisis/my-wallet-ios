@@ -918,7 +918,7 @@ private struct RenewalRow: View {
                     Text("·")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(subscription.nextRenewalDate, format: .dateTime.month(.abbreviated).day().year())
+                    Text(subscription.nextRenewalDate.appFormatted)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("·")
