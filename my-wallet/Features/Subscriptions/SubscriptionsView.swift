@@ -260,7 +260,7 @@ private struct InsightCards: View {
             CardContainer(verticalPadding: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     if let sub = nextRenewal {
-                        Text("Next renewal · \(sub.nextRenewalDate.formatted(Date.FormatStyle().month(.wide).day().year()))")
+                        Text("Next renewal · \(sub.nextRenewalDate.appFormatted)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         HStack(spacing: 4) {

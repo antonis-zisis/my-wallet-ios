@@ -58,7 +58,7 @@ struct Contract: Decodable, Identifiable {
 
     var formattedEndDate: String? {
         guard let endDate else { return nil }
-        return Self.parseDate(endDate).formatted(date: .abbreviated, time: .omitted)
+        return Self.parseDate(endDate).appFormatted
     }
 
     static func parseDate(_ raw: String) -> Date {

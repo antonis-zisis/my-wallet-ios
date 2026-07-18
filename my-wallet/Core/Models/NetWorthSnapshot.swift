@@ -61,7 +61,7 @@ struct NetWorthSnapshot: Decodable, Identifiable {
     }
 
     var formattedDate: String {
-        parsedSnapshotDate.formatted(date: .abbreviated, time: .omitted)
+        parsedSnapshotDate.appFormatted
     }
 
     var parsedSnapshotDate: Date {

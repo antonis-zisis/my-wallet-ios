@@ -506,7 +506,7 @@ private struct TransactionFormSheet: View {
                                     showDatePicker = true
                                 } label: {
                                     HStack {
-                                        Text(date.formatted(date: .abbreviated, time: .omitted))
+                                        Text(date.appFormatted)
                                             .foregroundStyle(.primary)
                                         Spacer()
                                         Image(systemName: "calendar")

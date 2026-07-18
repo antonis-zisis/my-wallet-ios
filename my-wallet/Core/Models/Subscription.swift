@@ -110,7 +110,7 @@ struct Subscription: Decodable, Identifiable {
     }
 
     var formattedNextRenewalDate: String {
-        nextRenewalDate.formatted(date: .abbreviated, time: .omitted)
+        nextRenewalDate.appFormatted
     }
 
     var daysUntilNextRenewal: Int {
@@ -124,12 +124,12 @@ struct Subscription: Decodable, Identifiable {
 
     var formattedEndDate: String? {
         guard let endDate else { return nil }
-        return Self.parseDate(endDate).formatted(date: .abbreviated, time: .omitted)
+        return Self.parseDate(endDate).appFormatted
     }
 
     var formattedTrialEndDate: String? {
         guard let trialEndsAt else { return nil }
-        return Self.parseDate(trialEndsAt).formatted(date: .abbreviated, time: .omitted)
+        return Self.parseDate(trialEndsAt).appFormatted
     }
 
     var detailLine: String? {

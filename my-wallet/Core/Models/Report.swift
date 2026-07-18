@@ -118,17 +118,17 @@ struct Report: Decodable, Identifiable {
             formatter.unitsStyle = .full
             return formatter.localizedString(for: date, relativeTo: now)
         }
-        return date.formatted(.dateTime.month(.abbreviated).day().year())
+        return date.appFormatted
     }
 
     var relativeUpdatedAt: String { smartUpdatedAt }
 
     var formattedCreatedAt: String {
-        parseServerDate(createdAt).formatted(date: .abbreviated, time: .omitted)
+        parseServerDate(createdAt).appFormatted
     }
 
     var formattedUpdatedAt: String {
-        parseServerDate(updatedAt).formatted(date: .abbreviated, time: .omitted)
+        parseServerDate(updatedAt).appFormatted
     }
 }
 
@@ -151,7 +151,7 @@ struct Transaction: Decodable, Identifiable {
     let updatedAt: String
 
     var formattedDate: String {
-        parseServerDate(date).formatted(date: .abbreviated, time: .omitted)
+        parseServerDate(date).appFormatted
     }
 
     var dateAsDate: Date {
